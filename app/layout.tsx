@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     description: 'A generic, payload-agnostic realtime WebSocket gateway built in Rust.',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
-  metadataBase: new URL(process.env.NEXTAUTH_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(process.env.SITE_URL ?? 'http://localhost:3000'),
 }
 
 export default function RootLayout({
