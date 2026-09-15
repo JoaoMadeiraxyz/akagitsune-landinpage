@@ -29,7 +29,12 @@ export const metadata: Metadata = {
     description: 'A generic, payload-agnostic realtime WebSocket gateway built in Rust.',
     images: ['/og-image.png'],
   },
-  metadataBase: new URL(process.env.SITE_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(
+    process.env.SITE_URL ??
+      (process.env.VERCEL_ENV === 'production'
+        ? 'https://www.akagitsune.org'
+        : 'http://localhost:3000')
+  ),
 }
 
 export default function RootLayout({
