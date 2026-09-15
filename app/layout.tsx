@@ -23,6 +23,12 @@ export const metadata: Metadata = {
     description: 'A generic, payload-agnostic realtime WebSocket gateway built in Rust.',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Akagitsune — Realtime WebSocket Gateway',
+    description: 'A generic, payload-agnostic realtime WebSocket gateway built in Rust.',
+    images: ['/og-image.png'],
+  },
   metadataBase: new URL(process.env.SITE_URL ?? 'http://localhost:3000'),
 }
 
