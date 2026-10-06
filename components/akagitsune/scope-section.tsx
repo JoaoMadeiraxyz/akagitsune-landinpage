@@ -9,7 +9,7 @@ const inScope = [
   'Connection management & lifecycle',
   'Message relay & envelope framing',
   'Backpressure & queue overflow handling',
-  'Topic / room-based routing (planned)',
+  'Topic-based routing',
   'Per-connection rate limiting (planned)',
   'Auth & admission control (planned)',
   'Delivery semantics & acknowledgements',

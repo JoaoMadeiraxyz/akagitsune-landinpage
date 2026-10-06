@@ -35,7 +35,7 @@ const characters: CharacterData[] = [
     role: 'The Messenger',
     task: 'Reader Task',
     image: '/images/kaze.png',
-    description: 'The Reader. Kaze intercepts every incoming frame the instant it arrives — validates the JSON, constructs the envelope once, and publishes to the broadcast bus. One serialization per message, not per receiver. Her half-mask and data scroll mark her as the first point of contact: she touches the wire so nobody else has to.',
+    description: 'The Reader. Kaze intercepts every incoming frame the instant it arrives — validates the control frame, constructs the envelope once, and fans it out to the subscribers of the topic. One serialization per message, not per receiver. Her half-mask and data scroll mark her as the first point of contact: she touches the wire so nobody else has to.',
     color: 'text-[#E1181E]',
     borderColor: 'border-[#C32427]/30 hover:border-[#C32427]/60',
   },
@@ -43,9 +43,9 @@ const characters: CharacterData[] = [
     id: 'gatekeeper',
     name: 'Tetsu',
     role: 'The Gatekeeper',
-    task: 'Bridge Task',
+    task: 'Topic Registry',
     image: '/images/tetsu.png',
-    description: 'The Bridge. Tetsu stands between the broadcast bus and every local connection queue. He receives from the bus, skips the sender\'s own messages, and forwards the rest. His armored frame and glowing lantern embody the principle: guard the flow, never the content. Sturdy, reliable, always watching.',
+    description: 'The Registry. Tetsu keeps the lock-free map from topic to subscribers and sits between every publish and every connection inbox. He skips the sender\'s own messages and hands the rest only to the connections subscribed to that topic. His armored frame and glowing lantern embody the principle: guard the flow, never the content. Sturdy, reliable, always watching.',
     color: 'text-[#D76260]',
     borderColor: 'border-[#871B1D]/30 hover:border-[#871B1D]/60',
   },
@@ -55,7 +55,7 @@ const characters: CharacterData[] = [
     role: 'The Trickster',
     task: 'Writer Task',
     image: '/images/hayate.png',
-    description: 'The Writer. Hayate drains the local queue in batches — one flush per batch, never wasted work. Only the Writer touches the sink. His acrobatic agility mirrors the writer task\'s speed: clear the queue, flush, repeat. The twin blades? One for each end of the pipe.',
+    description: 'The Writer. Hayate drains the connection\'s inbox in batches — one flush per batch, never wasted work. Only the Writer touches the sink. His acrobatic agility mirrors the writer task\'s speed: clear the queue, flush, repeat. The twin blades? One for each end of the pipe.',
     color: 'text-[#6E2A55]',
     borderColor: 'border-[#6E2A55]/30 hover:border-[#6E2A55]/60',
   },
@@ -88,11 +88,11 @@ export function CharactersSection() {
           <div className="text-center mb-16">
             <p className="text-primary font-mono text-sm tracking-widest uppercase mb-3">The Operatives</p>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
-              Four tasks, four faces
+              Four roles, four faces
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-lg">
-              Every connection in Akagitsune runs three concurrent tasks — reader, bridge, and writer —
-              plus a lead that ties them together. Meet the cast.
+              Every connection in Akagitsune runs two concurrent tasks — reader and writer — around one shared
+              topic registry, plus a lead that ties them together. Meet the cast.
             </p>
           </div>
         </FadeIn>

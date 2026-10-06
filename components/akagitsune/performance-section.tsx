@@ -3,13 +3,15 @@ import { Section } from '@/components/layouts/section'
 import { SafeNumber } from '@/components/safe-format'
 import { FadeIn } from '@/components/ui/animate'
 import { P99Chart } from '@/components/akagitsune/p99-chart'
-import { benchmarkHardware, benchmarkRuns, slo, sustainedLoad } from '@/lib/benchmark-data'
+import { benchmarkHardware, benchmarkRuns, slo, sustainedLoad, topicsGoalRun } from '@/lib/benchmark-data'
 
 /** Matches the emphasis palette in `p99-chart.tsx`, plus what each shape actually does. */
 const shapeLegend = [
   { shape: 'ingest', swatch: 'bg-chart-4', gloss: 'many senders, one topic' },
   { shape: 'mesh', swatch: 'bg-chart-5', gloss: 'everyone talks to everyone' },
-  { shape: 'fanout', swatch: 'bg-primary', gloss: 'one sender, every socket' },
+  { shape: 'fanout', swatch: 'bg-primary', gloss: 'few senders, many sockets' },
+  { shape: 'topics', swatch: 'border-2 border-primary', gloss: 'same load, 100 topics' },
+  { shape: 'explore', swatch: 'border-2 border-muted-foreground', gloss: 'probe past the goal' },
 ]
 
 const columns = ['Offered load', 'Shape', 'Conns', 'p50', 'p99', 'Delivered', 'Against budget']
@@ -32,8 +34,9 @@ export function PerformanceSection() {
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-lg">
               The target is a million deliveries a second inside a {slo.p99BandMs[0]}–{slo.p99CeilingMs} ms
-              p99 budget. All three traffic shapes clear it, and clear half again as much. Past that they
-              part ways: fanout is the expensive one, and it breaks first.
+              p99 budget. On a single topic all three traffic shapes clear it, and keep clearing it at
+              twice the load. Spread across 100 topics the same million deliveries all arrive, but p99
+              lands at {topicsGoalRun.serviceP99Ms.toFixed(1)} ms, over budget.
             </p>
           </div>
         </FadeIn>
@@ -45,13 +48,18 @@ export function PerformanceSection() {
                 Service p99 against offered load
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Log scale, because the spread runs from 3 ms to 825 ms. The dashed rule is the{' '}
+                Log scale, because the spread runs from 3 ms to 28 ms. The dashed rule is the{' '}
                 {slo.p99CeilingMs} ms budget; the tinted band above it is out of spec.
               </p>
-              <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-3">
+              <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
                 {shapeLegend.map((item) => (
                   <li key={item.shape} className="flex items-baseline gap-2">
-                    <span aria-hidden className={`mt-1.5 h-0.5 w-4 shrink-0 rounded-full ${item.swatch}`} />
+                    <span
+                      aria-hidden
+                      className={`shrink-0 rounded-full ${
+                        item.swatch.startsWith('border') ? 'mt-1 h-2.5 w-2.5 mx-0.5' : 'mt-1.5 h-0.5 w-4'
+                      } ${item.swatch}`}
+                    />
                     <span className="font-mono text-xs text-foreground">{item.shape}</span>
                     <span className="text-xs text-muted-foreground">{item.gloss}</span>
                   </li>
@@ -62,9 +70,9 @@ export function PerformanceSection() {
             <P99Chart />
 
             <p className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground/80">
-              Ingest stops at 1.5M because it was never run above it. The hollow marker at 2.78M is a
-              separate exploratory shape, and the only point where delivery rather than latency is what
-              gives out.
+              Ingest was not run at 2M. The hollow grey markers at 3M and 3.59M are exploratory probes,
+              and they held too: every message delivered, no breaking point found yet. The hollow red
+              marker at 1M is the topic-spread run, the only goal-load run over budget.
             </p>
           </figure>
         </FadeIn>
@@ -139,9 +147,14 @@ export function PerformanceSection() {
             <p className="mt-6 text-xs text-muted-foreground/70 max-w-2xl">
               Every number is from a single local run on {benchmarkHardware} — not a production
               deployment. Latency is service latency: message arrival minus actual send, the more
-              conservative of the two figures the harness records. The highest load every shape held
-              inside the budget was <SafeNumber value={sustainedLoad} /> deliveries a second. Benchmark
-              scripts and methodology are in the repository.
+              conservative of the two figures the harness records. The highest load any run held
+              inside the budget was <SafeNumber value={sustainedLoad} /> deliveries a second. Two topic-heavy
+              runs, 5,000 topics and membership churn, also miss the budget, and the cause is not yet
+              isolated: the load generator may be the bottleneck in the first case, and copying the
+              subscriber list on every join and leave may be in the second. Every run carries a
+              per-connection inbox, so memory per connection rose from about 150 KiB to about 200 KiB
+              against the previous global-bus architecture. Benchmark scripts and methodology are in
+              the repository.
             </p>
           </div>
         </FadeIn>

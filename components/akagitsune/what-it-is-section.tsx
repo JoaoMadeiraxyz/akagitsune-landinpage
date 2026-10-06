@@ -14,7 +14,7 @@ const features = [
   {
     icon: Radio,
     title: 'Real-Time, Always',
-    description: 'Built on asynchronous Rust with a lock-free hot path. Every message is serialized once — not once per receiver — then broadcast to all connected peers instantly.',
+    description: 'Built on asynchronous Rust with a lock-free hot path. Every message is serialized once — not once per receiver — then delivered only to the connections subscribed to its topic.',
   },
   {
     icon: Shield,
@@ -23,8 +23,8 @@ const features = [
   },
   {
     icon: Layers,
-    title: 'Three Tasks, One Connection',
-    description: 'Each connection runs a reader (ingest), a bridge (fanout), and a writer (flush). Bounded queues everywhere, no shared locks, reference-counted message clones. Clean, predictable, debuggable.',
+    title: 'Two Tasks, One Connection',
+    description: 'Each connection runs a reader (ingest and fanout into subscriber inboxes) and a writer (flush). Bounded queues everywhere, no locks in gateway code, reference-counted message clones. Clean, predictable, debuggable.',
   },
 ]
 

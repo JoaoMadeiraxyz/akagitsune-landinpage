@@ -15,7 +15,7 @@ import {
   YAxis,
 } from 'recharts'
 import { ClientOnly } from '@/components/client-only'
-import { benchmarkRuns, chartedShapes, cliffRun, p99ByLoad, slo, type ChartedShape } from '@/lib/benchmark-data'
+import { benchmarkRuns, chartedShapes, p99ByLoad, slo, topicsGoalRun, type ChartedShape } from '@/lib/benchmark-data'
 
 /**
  * Emphasis palette, not categorical: fanout is the story (it is the binding
@@ -87,7 +87,7 @@ function Plot() {
         {/* Everything above the p99 ceiling is out of spec — pass/fail reads by position. */}
         <ReferenceArea
           y1={slo.p99CeilingMs}
-          y2={1100}
+          y2={40}
           fill="hsl(var(--primary))"
           fillOpacity={0.05}
           stroke="none"
@@ -105,13 +105,13 @@ function Plot() {
         />
         <YAxis
           scale="log"
-          domain={[2, 1100]}
-          ticks={[3, 10, 30, 100, 300, 1000]}
+          domain={[2, 40]}
+          ticks={[3, 5, 10, 20, 30]}
           tickFormatter={(v: number) => `${v}`}
           stroke={axis}
           tick={{ fill: axisText, fontSize: 11, fontFamily: 'var(--font-mono)' }}
           tickLine={false}
-          width={34}
+          width={28}
         />
         {/* A real threshold, so a dashed rule is the right signal here. */}
         <ReferenceLine
@@ -147,11 +147,27 @@ function Plot() {
             animationDuration={900}
           />
         ))}
-        {/* The cliff: a separate exploratory shape, and the one point where
-            delivery — not latency — is what gives out. Hollow and unconnected,
-            so it reads as a different kind of result, not a fourth series. */}
+        {/* Exploratory probes past the goal loads. Hollow and unconnected, so they
+            read as a different kind of result, not a fourth series. */}
         <Line
-          dataKey="cliff"
+          dataKey="explore"
+          stroke="none"
+          legendType="none"
+          dot={{
+            r: 5,
+            fill: 'hsl(var(--background))',
+            stroke: 'hsl(var(--muted-foreground))',
+            strokeWidth: 2,
+          }}
+          activeDot={false}
+          isAnimationActive={!reduceMotion}
+          animationBegin={520}
+          animationDuration={600}
+        />
+        {/* The goal load spread over 100 topics: the one goal run over budget.
+            Named on the chart so the miss is not buried in the table. */}
+        <Line
+          dataKey="topics"
           stroke="none"
           legendType="none"
           dot={{
@@ -165,14 +181,11 @@ function Plot() {
           animationBegin={520}
           animationDuration={600}
         >
-          {/* Names the failure mode, since this point breaks on delivery, not latency. */}
           <LabelList
-            dataKey="cliff"
-            position="left"
+            dataKey="topics"
+            position="right"
             offset={12}
-            formatter={(v: number | null) =>
-              v == null ? '' : `${cliffRun.deliveryPct.toFixed(1)}% delivered`
-            }
+            formatter={(v: number | null) => (v == null ? '' : `100 topics: ${topicsGoalRun.serviceP99Ms.toFixed(1)} ms`)}
             fill="hsl(var(--foreground))"
             fontSize={11}
             fontFamily="var(--font-mono)"

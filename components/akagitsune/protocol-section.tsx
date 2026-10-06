@@ -14,7 +14,7 @@ const protocolTabs: { key: TabKey; label: string; icon: React.ElementType; descr
     key: 'welcome',
     label: 'Welcome',
     icon: ArrowRight,
-    description: 'On connect, the server immediately sends a welcome frame with the client\'s assigned UUID. No handshake required — you\'re in.',
+    description: 'On connect, the server immediately sends a welcome frame with the client\'s assigned UUID. No handshake required — but nothing is delivered until you subscribe to a topic.',
     code: `// Server → Client (on connect)
 {
   "type": "welcome",
@@ -23,15 +23,21 @@ const protocolTabs: { key: TabKey; label: string; icon: React.ElementType; descr
   },
   {
     key: 'text',
-    label: 'Text Frames',
+    label: 'Topics',
     icon: MessageSquare,
-    description: 'Any valid JSON the client sends is validated, wrapped in an envelope with the sender\'s ID, and relayed to every other connection. The payload is never deserialized — forwarded byte-for-byte inside the envelope.',
+    description: 'A topic is an opaque key of 1–255 bytes that the client chooses. Publish to it and only the other subscribers receive the message. The payload is never deserialized — forwarded byte-for-byte inside the envelope.',
     code: `// Client sends:
-{ "action": "move", "x": 42 }
+{ "type": "subscribe", "topic": "lobby" }
+{ "type": "publish", "topic": "lobby",
+  "data": { "action": "move", "x": 42 } }
 
-// Every other client receives:
+// Server answers the subscribe:
+{ "type": "subscribed", "topic": "lobby" }
+
+// Every other subscriber of "lobby" receives:
 {
   "type": "message",
+  "topic": "lobby",
   "from": "a3f1b2c4-5678-...",
   "data": { "action": "move", "x": 42 }
 }`,
@@ -40,21 +46,25 @@ const protocolTabs: { key: TabKey; label: string; icon: React.ElementType; descr
     key: 'binary',
     label: 'Binary Frames',
     icon: Binary,
-    description: 'Binary frames are relayed byte-for-byte with no envelope and no transformation. Use them for protobuf, msgpack, audio chunks, or anything that isn\'t JSON.',
-    code: `// Client sends: <raw bytes>
-// Every other client receives:
-//   <same raw bytes, untouched>`,
+    description: 'Binary frames carry a one-byte topic length and the topic, then the payload, which is relayed untouched. Subscribers also get the sender\'s UUID. Use them for protobuf, msgpack, audio chunks, or anything that isn\'t JSON.',
+    code: `// Client sends:
+//   [topic length: u8][topic][payload]
+// Subscribers receive:
+//   [topic length: u8][topic][sender uuid: 16 bytes][payload]`,
   },
   {
     key: 'control',
     label: 'Control Frames',
     icon: AlertTriangle,
-    description: 'When a slow client\'s queue overflows, the gateway drops queued messages for that client and sends a warning. Errors are reported as structured JSON. Frames over 64 KiB are rejected.',
-    code: `// Backpressure warning (slow client):
+    description: 'When a slow client\'s inbox overflows, the gateway drops its oldest queued messages and sends a warning. Errors are structured JSON and name the topic they concern. Frames over 64 KiB are rejected, and a connection holds at most 64 subscriptions.',
+    code: `// Leave a topic:
+{ "type": "unsubscribe", "topic": "lobby" }
+
+// Backpressure warning (slow client):
 { "type": "warning", "dropped": 12 }
 
-// Error (e.g., invalid JSON):
-{ "type": "error", "message": "invalid JSON" }`,
+// Error (e.g., publish without data):
+{ "type": "error", "topic": "lobby", "message": "..." }`,
   },
 ]
 
@@ -73,8 +83,8 @@ export function ProtocolSection() {
               Simple by design
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-lg">
-              No handshake, no auth negotiation, no subscription dance. 
-              Connect, receive your ID, start sending. Four frame types cover everything.
+              No handshake and no auth negotiation. 
+              Connect, receive your ID, subscribe to a topic, start publishing. Four kinds of frame cover everything.
             </p>
           </div>
         </FadeIn>

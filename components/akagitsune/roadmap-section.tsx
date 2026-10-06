@@ -8,15 +8,15 @@ import { GitBranch, Lock, Gauge, Server, Radio } from 'lucide-react'
 const roadmapItems = [
   {
     icon: GitBranch,
-    title: 'Topic & Room Routing',
-    description: 'Replace the single broadcast bus with a topic-based subscription model. Clients subscribe to rooms; messages route only to subscribers — eliminating O(N²) fanout.',
-    status: 'Next',
+    title: 'Topic Routing',
+    description: 'The single broadcast bus is gone. Clients subscribe to topics and a publish reaches only the other subscribers of its topic, through a lock-free registry and one bounded inbox per connection.',
+    status: 'Achieved',
   },
   {
     icon: Lock,
     title: 'Authentication',
-    description: 'Token-based admission control at connection time. The gateway verifies identity without interpreting payload — auth is transport-level, not content-level.',
-    status: 'Planned',
+    description: 'Token-based admission control at connection time. The gateway verifies identity without interpreting payload — auth is transport-level, not content-level. It also unlocks per-topic read and write permissions.',
+    status: 'Next',
   },
   {
     icon: Gauge,
@@ -49,20 +49,24 @@ export function RoadmapSection() {
               What comes next
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-lg">
-              Akagitsune is under active development. These are the features on the horizon — 
-              all of them pass the scope test.
+              Akagitsune is under active development. Topic routing has landed; these are the features
+              on the horizon — all of them pass the scope test.
             </p>
           </div>
         </FadeIn>
 
         <Stagger staggerDelay={0.1} className="max-w-3xl mx-auto space-y-4">
-          {roadmapItems.map((item: { icon: React.ElementType; title: string; description: string; status: string }, i: number) => (
+          {roadmapItems.map((item: { icon: React.ElementType; title: string; description: string; status: string }) => (
             <StaggerItem key={item.title}>
               <div className="group flex items-start gap-4 p-5 rounded-xl bg-card border border-border hover:border-primary/30 transition-all duration-300">
                 {/* Timeline dot */}
                 <div className="flex flex-col items-center shrink-0 mt-1">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    i === 0 ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'
+                    item.status === 'Achieved'
+                      ? 'bg-green-500/10 text-green-400'
+                      : item.status === 'Next'
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-secondary text-muted-foreground'
                   }`}>
                     <item.icon size={18} />
                   </div>
@@ -71,7 +75,9 @@ export function RoadmapSection() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <h3 className="font-display text-base font-semibold">{item.title}</h3>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider ${
-                      item.status === 'Next'
+                      item.status === 'Achieved'
+                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                        : item.status === 'Next'
                         ? 'bg-primary/10 text-primary border border-primary/20'
                         : item.status === 'Planned'
                         ? 'bg-secondary text-muted-foreground border border-border'
