@@ -15,14 +15,9 @@ import {
   YAxis,
 } from 'recharts'
 import { ClientOnly } from '@/components/client-only'
+import { useI18n } from '@/components/i18n-provider'
 import { benchmarkRuns, chartedShapes, p99ByLoad, slo, topicsGoalRun, type ChartedShape } from '@/lib/benchmark-data'
 
-/**
- * Emphasis palette, not categorical: fanout is the story (it is the binding
- * constraint and the first to break), the other two shapes are context. The
- * chart-1/2/3 tokens are all reds and are not separable under colour-vision
- * deficiency, so the two context series use the neutral steps instead.
- */
 const shapeColor: Record<ChartedShape, string> = {
   ingest: 'hsl(var(--chart-4))',
   mesh: 'hsl(var(--chart-5))',
@@ -32,12 +27,13 @@ const shapeColor: Record<ChartedShape, string> = {
 const axis = 'hsl(var(--border))'
 const axisText = 'hsl(var(--muted-foreground))'
 
-const formatLoad = (load: number) => {
+const formatLoad = (load: number, formatNumber: (v: number, max?: number, min?: number) => string) => {
   const millions = load / 1_000_000
-  return `${millions % 1 === 0 ? millions : millions.toFixed(2).replace(/0$/, '')}M`
+  return `${formatNumber(millions, 2, 0)}M`
 }
 
 function Readout({ active, label }: { active?: boolean; label?: number }) {
+  const { t, formatNumber } = useI18n()
   if (!active || typeof label !== 'number') return null
   const runs = benchmarkRuns.filter((r) => r.load === label)
   if (runs.length === 0) return null
@@ -45,7 +41,7 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
   return (
     <div className="rounded-lg border border-border bg-popover/95 px-3 py-2.5 backdrop-blur-sm">
       <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-        {formatLoad(label)} deliveries/s offered
+        {formatLoad(label, formatNumber)} {t.performance.offeredReadout}
       </div>
       <table className="mt-2 font-mono text-xs">
         <tbody>
@@ -62,13 +58,13 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
                 </span>
               </td>
               <td className="pr-3 py-0.5 text-right text-muted-foreground">
-                p50 {run.serviceP50Ms.toFixed(2)}
+                p50 {formatNumber(run.serviceP50Ms, 2)}
               </td>
               <td className="pr-3 py-0.5 text-right text-foreground">
-                p99 {run.serviceP99Ms.toFixed(2)} ms
+                p99 {formatNumber(run.serviceP99Ms, 2)} ms
               </td>
               <td className="py-0.5 text-right text-muted-foreground">
-                {run.deliveryPct.toFixed(run.deliveryPct === 100 ? 0 : 2)}% delivered
+                {formatNumber(run.deliveryPct, run.deliveryPct === 100 ? 0 : 2)}% {t.performance.delivered}
               </td>
             </tr>
           ))}
@@ -79,12 +75,12 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
 }
 
 function Plot() {
+  const { t, formatNumber } = useI18n()
   const reduceMotion = useReducedMotion()
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={p99ByLoad} margin={{ top: 12, right: 30, bottom: 4, left: 4 }}>
-        {/* Everything above the p99 ceiling is out of spec — pass/fail reads by position. */}
         <ReferenceArea
           y1={slo.p99CeilingMs}
           y2={40}
@@ -96,7 +92,7 @@ function Plot() {
         <XAxis
           dataKey="load"
           type="category"
-          tickFormatter={formatLoad}
+          tickFormatter={(load: number) => formatLoad(load, formatNumber)}
           interval={0}
           stroke={axis}
           tick={{ fill: axisText, fontSize: 11, fontFamily: 'var(--font-mono)' }}
@@ -113,14 +109,13 @@ function Plot() {
           tickLine={false}
           width={28}
         />
-        {/* A real threshold, so a dashed rule is the right signal here. */}
         <ReferenceLine
           y={slo.p99CeilingMs}
           stroke={axisText}
           strokeDasharray="4 4"
           strokeOpacity={0.7}
           label={{
-            value: `${slo.p99CeilingMs} ms budget`,
+            value: t.performance.budgetLabel(slo.p99CeilingMs),
             position: 'insideTopRight',
             fill: axisText,
             fontSize: 11,
@@ -147,8 +142,6 @@ function Plot() {
             animationDuration={900}
           />
         ))}
-        {/* Exploratory probes past the goal loads. Hollow and unconnected, so they
-            read as a different kind of result, not a fourth series. */}
         <Line
           dataKey="explore"
           stroke="none"
@@ -164,8 +157,6 @@ function Plot() {
           animationBegin={520}
           animationDuration={600}
         />
-        {/* The goal load spread over 100 topics: the one goal run over budget.
-            Named on the chart so the miss is not buried in the table. */}
         <Line
           dataKey="topics"
           stroke="none"
@@ -185,7 +176,9 @@ function Plot() {
             dataKey="topics"
             position="right"
             offset={12}
-            formatter={(v: number | null) => (v == null ? '' : `100 topics: ${topicsGoalRun.serviceP99Ms.toFixed(1)} ms`)}
+            formatter={(v: number | null) =>
+              v == null ? '' : t.performance.topicsLabel(formatNumber(topicsGoalRun.serviceP99Ms, 1))
+            }
             fill="hsl(var(--foreground))"
             fontSize={11}
             fontFamily="var(--font-mono)"
@@ -202,8 +195,6 @@ export function P99Chart() {
 
   return (
     <div ref={ref} className="h-[280px] sm:h-[380px] w-full">
-      {/* Recharts measures the DOM to size itself, so it never renders on the
-          server. The wrapper reserves the exact height either way. */}
       <ClientOnly>{inView ? <Plot /> : null}</ClientOnly>
     </div>
   )

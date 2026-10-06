@@ -39,9 +39,6 @@ export const slo = {
   deliveryPct: 99.9,
 } as const
 
-export const benchmarkHardware =
-  'Apple M4 Pro, 14 cores, release build, gateway and load generator on the same machine'
-
 /** Ordered by offered load, then by p99 within each load step. */
 export const benchmarkRuns: BenchmarkRun[] = [
   { shape: 'topics', load: 90_000, connections: 1000, serviceP50Ms: 2.744, serviceP99Ms: 5.104, serviceP999Ms: 6.128, deliveryPct: 100, warnings: 0 },
@@ -94,9 +91,9 @@ export const p99ByLoad = [1_000_000, 1_500_000, 2_000_000, 3_000_000, 3_588_000]
 /** The highest load any run held inside the p99 budget with every message delivered. */
 export const sustainedLoad = 3_588_000
 
-/** Headline figures, also used by the hero so the two never drift apart. */
+/** Headline figures, also used by the hero so the two never drift apart. Labels live in the i18n dictionaries, keyed by `key`. */
 export const headlineStats = [
-  { value: '1M/s', label: 'Deliveries sustained' },
-  { value: '6ms', label: 'Worst p99 at 1M/s, one topic' },
-  { value: '100%', label: 'Delivered at 1M/s' },
+  { key: 'sustained', value: '1M/s' },
+  { key: 'p99', value: '6ms' },
+  { key: 'delivered', value: '100%' },
 ] as const

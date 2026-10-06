@@ -1,42 +1,42 @@
+'use client'
+
 import { Container } from '@/components/layouts/container'
 import { Section } from '@/components/layouts/section'
 import { SafeNumber } from '@/components/safe-format'
 import { FadeIn } from '@/components/ui/animate'
 import { P99Chart } from '@/components/akagitsune/p99-chart'
-import { benchmarkHardware, benchmarkRuns, slo, sustainedLoad, topicsGoalRun } from '@/lib/benchmark-data'
+import { useI18n } from '@/components/i18n-provider'
+import { benchmarkRuns, slo, sustainedLoad, topicsGoalRun } from '@/lib/benchmark-data'
 
-/** Matches the emphasis palette in `p99-chart.tsx`, plus what each shape actually does. */
 const shapeLegend = [
-  { shape: 'ingest', swatch: 'bg-chart-4', gloss: 'many senders, one topic' },
-  { shape: 'mesh', swatch: 'bg-chart-5', gloss: 'everyone talks to everyone' },
-  { shape: 'fanout', swatch: 'bg-primary', gloss: 'few senders, many sockets' },
-  { shape: 'topics', swatch: 'border-2 border-primary', gloss: 'same load, 100 topics' },
-  { shape: 'explore', swatch: 'border-2 border-muted-foreground', gloss: 'probe past the goal' },
-]
+  { shape: 'ingest', swatch: 'bg-chart-4' },
+  { shape: 'mesh', swatch: 'bg-chart-5' },
+  { shape: 'fanout', swatch: 'bg-primary' },
+  { shape: 'topics', swatch: 'border-2 border-primary' },
+  { shape: 'explore', swatch: 'border-2 border-muted-foreground' },
+] as const
 
-const columns = ['Offered load', 'Shape', 'Conns', 'p50', 'p99', 'Delivered', 'Against budget']
-
-function verdict(p99: number, deliveryPct: number) {
-  if (deliveryPct < slo.deliveryPct) return 'delivery breaks'
-  if (p99 > slo.p99CeilingMs) return 'over budget'
-  return 'within budget'
+function verdictKey(p99: number, deliveryPct: number) {
+  if (deliveryPct < slo.deliveryPct) return 'breaks'
+  if (p99 > slo.p99CeilingMs) return 'over'
+  return 'within'
 }
 
 export function PerformanceSection() {
+  const { t, intl, formatNumber } = useI18n()
+  const p = t.performance
+  const columns = p.columns
   return (
     <Section id="performance">
       <Container size="lg">
         <FadeIn>
           <div className="text-center mb-12">
-            <p className="text-primary font-mono text-sm tracking-widest uppercase mb-3">Performance</p>
+            <p className="text-primary font-mono text-sm tracking-widest uppercase mb-3">{p.eyebrow}</p>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
-              One million, sustained
+              {p.title}
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-lg">
-              The target is a million deliveries a second inside a {slo.p99BandMs[0]}–{slo.p99CeilingMs} ms
-              p99 budget. On a single topic all three traffic shapes clear it, and keep clearing it at
-              twice the load. Spread across 100 topics the same million deliveries all arrive, but p99
-              lands at {topicsGoalRun.serviceP99Ms.toFixed(1)} ms, over budget.
+              {p.intro(slo.p99BandMs[0], slo.p99CeilingMs, formatNumber(topicsGoalRun.serviceP99Ms, 1))}
             </p>
           </div>
         </FadeIn>
@@ -45,11 +45,10 @@ export function PerformanceSection() {
           <figure className="rounded-xl bg-card border border-border p-5 sm:p-7">
             <figcaption className="mb-6">
               <h3 className="font-display text-lg font-semibold tracking-tight">
-                Service p99 against offered load
+                {p.chartTitle}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Log scale, because the spread runs from 3 ms to 28 ms. The dashed rule is the{' '}
-                {slo.p99CeilingMs} ms budget; the tinted band above it is out of spec.
+                {p.chartCaption(slo.p99CeilingMs)}
               </p>
               <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
                 {shapeLegend.map((item) => (
@@ -61,7 +60,7 @@ export function PerformanceSection() {
                       } ${item.swatch}`}
                     />
                     <span className="font-mono text-xs text-foreground">{item.shape}</span>
-                    <span className="text-xs text-muted-foreground">{item.gloss}</span>
+                    <span className="text-xs text-muted-foreground">{p.shapeGloss[item.shape]}</span>
                   </li>
                 ))}
               </ul>
@@ -70,26 +69,23 @@ export function PerformanceSection() {
             <P99Chart />
 
             <p className="mt-5 border-t border-border pt-4 text-xs text-muted-foreground/80">
-              Ingest was not run at 2M. The hollow grey markers at 3M and 3.59M are exploratory probes,
-              and they held too: every message delivered, no breaking point found yet. The hollow red
-              marker at 1M is the topic-spread run, the only goal-load run over budget.
+              {p.chartNote}
             </p>
           </figure>
         </FadeIn>
 
         <FadeIn delay={0.25}>
           <div className="mt-10">
-            <h3 className="font-display text-lg font-semibold tracking-tight">Every run, in full</h3>
+            <h3 className="font-display text-lg font-semibold tracking-tight">{p.tableTitle}</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Latency in milliseconds. Rows that miss the budget are dimmed.
-              <span className="sm:hidden"> Scroll the table sideways for the rest of the columns.</span>
+              {p.tableHint}
+              <span className="sm:hidden">{p.tableScrollHint}</span>
             </p>
 
             <div className="mt-5 overflow-x-auto rounded-xl border border-border">
               <table className="w-full min-w-[640px] border-collapse text-sm">
                 <caption className="sr-only">
-                  Benchmark runs by offered load and traffic shape, with p50 and p99 service latency,
-                  delivery rate, and whether each run stayed inside the {slo.p99CeilingMs} ms budget.
+                  {p.tableCaption(slo.p99CeilingMs)}
                 </caption>
                 <thead>
                   <tr className="border-b border-border bg-secondary/50">
@@ -117,25 +113,25 @@ export function PerformanceSection() {
                         }`}
                       >
                         <td className="px-4 py-2.5 font-mono tabular-nums">
-                          <SafeNumber value={run.load} />
+                          <SafeNumber value={run.load} locale={intl} />
                         </td>
                         <td className="px-4 py-2.5 font-mono">{run.shape}</td>
                         <td className="px-4 py-2.5 text-right font-mono tabular-nums">{run.connections}</td>
                         <td className="px-4 py-2.5 text-right font-mono tabular-nums">
-                          {run.serviceP50Ms.toFixed(2)}
+                          {formatNumber(run.serviceP50Ms, 2)}
                         </td>
                         <td
                           className={`px-4 py-2.5 text-right font-mono tabular-nums ${
                             missed ? '' : 'font-semibold'
                           }`}
                         >
-                          {run.serviceP99Ms.toFixed(2)}
+                          {formatNumber(run.serviceP99Ms, 2)}
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono tabular-nums">
-                          {run.deliveryPct.toFixed(run.deliveryPct === 100 ? 0 : 2)}%
+                          {formatNumber(run.deliveryPct, run.deliveryPct === 100 ? 0 : 2)}%
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono text-xs">
-                          {verdict(run.serviceP99Ms, run.deliveryPct)}
+                          {p.verdict[verdictKey(run.serviceP99Ms, run.deliveryPct)]}
                         </td>
                       </tr>
                     )
@@ -145,16 +141,9 @@ export function PerformanceSection() {
             </div>
 
             <p className="mt-6 text-xs text-muted-foreground/70 max-w-2xl">
-              Every number is from a single local run on {benchmarkHardware} — not a production
-              deployment. Latency is service latency: message arrival minus actual send, the more
-              conservative of the two figures the harness records. The highest load any run held
-              inside the budget was <SafeNumber value={sustainedLoad} /> deliveries a second. Two topic-heavy
-              runs, 5,000 topics and membership churn, also miss the budget, and the cause is not yet
-              isolated: the load generator may be the bottleneck in the first case, and copying the
-              subscriber list on every join and leave may be in the second. Every run carries a
-              per-connection inbox, so memory per connection rose from about 150 KiB to about 200 KiB
-              against the previous global-bus architecture. Benchmark scripts and methodology are in
-              the repository.
+              {p.footnoteBefore(p.hardware)}
+              <SafeNumber value={sustainedLoad} locale={intl} />
+              {p.footnoteAfter}
             </p>
           </div>
         </FadeIn>
