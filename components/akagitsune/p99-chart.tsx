@@ -15,14 +15,9 @@ import {
   YAxis,
 } from 'recharts'
 import { ClientOnly } from '@/components/client-only'
+import { useI18n } from '@/components/i18n-provider'
 import { benchmarkRuns, chartedShapes, cliffRun, p99ByLoad, slo, type ChartedShape } from '@/lib/benchmark-data'
 
-/**
- * Emphasis palette, not categorical: fanout is the story (it is the binding
- * constraint and the first to break), the other two shapes are context. The
- * chart-1/2/3 tokens are all reds and are not separable under colour-vision
- * deficiency, so the two context series use the neutral steps instead.
- */
 const shapeColor: Record<ChartedShape, string> = {
   ingest: 'hsl(var(--chart-4))',
   mesh: 'hsl(var(--chart-5))',
@@ -38,6 +33,7 @@ const formatLoad = (load: number) => {
 }
 
 function Readout({ active, label }: { active?: boolean; label?: number }) {
+  const { t } = useI18n()
   if (!active || typeof label !== 'number') return null
   const runs = benchmarkRuns.filter((r) => r.load === label)
   if (runs.length === 0) return null
@@ -45,7 +41,7 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
   return (
     <div className="rounded-lg border border-border bg-popover/95 px-3 py-2.5 backdrop-blur-sm">
       <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-        {formatLoad(label)} deliveries/s offered
+        {formatLoad(label)} {t.performance.offeredReadout}
       </div>
       <table className="mt-2 font-mono text-xs">
         <tbody>
@@ -68,7 +64,7 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
                 p99 {run.serviceP99Ms.toFixed(2)} ms
               </td>
               <td className="py-0.5 text-right text-muted-foreground">
-                {run.deliveryPct.toFixed(run.deliveryPct === 100 ? 0 : 2)}% delivered
+                {run.deliveryPct.toFixed(run.deliveryPct === 100 ? 0 : 2)}% {t.performance.delivered}
               </td>
             </tr>
           ))}
@@ -79,12 +75,12 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
 }
 
 function Plot() {
+  const { t } = useI18n()
   const reduceMotion = useReducedMotion()
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={p99ByLoad} margin={{ top: 12, right: 30, bottom: 4, left: 4 }}>
-        {/* Everything above the p99 ceiling is out of spec — pass/fail reads by position. */}
         <ReferenceArea
           y1={slo.p99CeilingMs}
           y2={1100}
@@ -113,14 +109,13 @@ function Plot() {
           tickLine={false}
           width={34}
         />
-        {/* A real threshold, so a dashed rule is the right signal here. */}
         <ReferenceLine
           y={slo.p99CeilingMs}
           stroke={axisText}
           strokeDasharray="4 4"
           strokeOpacity={0.7}
           label={{
-            value: `${slo.p99CeilingMs} ms budget`,
+            value: t.performance.budgetLabel(slo.p99CeilingMs),
             position: 'insideTopRight',
             fill: axisText,
             fontSize: 11,
@@ -147,9 +142,6 @@ function Plot() {
             animationDuration={900}
           />
         ))}
-        {/* The cliff: a separate exploratory shape, and the one point where
-            delivery — not latency — is what gives out. Hollow and unconnected,
-            so it reads as a different kind of result, not a fourth series. */}
         <Line
           dataKey="cliff"
           stroke="none"
@@ -165,13 +157,12 @@ function Plot() {
           animationBegin={520}
           animationDuration={600}
         >
-          {/* Names the failure mode, since this point breaks on delivery, not latency. */}
           <LabelList
             dataKey="cliff"
             position="left"
             offset={12}
             formatter={(v: number | null) =>
-              v == null ? '' : `${cliffRun.deliveryPct.toFixed(1)}% delivered`
+              v == null ? '' : `${cliffRun.deliveryPct.toFixed(1)}% ${t.performance.delivered}`
             }
             fill="hsl(var(--foreground))"
             fontSize={11}
@@ -189,8 +180,6 @@ export function P99Chart() {
 
   return (
     <div ref={ref} className="h-[280px] sm:h-[380px] w-full">
-      {/* Recharts measures the DOM to size itself, so it never renders on the
-          server. The wrapper reserves the exact height either way. */}
       <ClientOnly>{inView ? <Plot /> : null}</ClientOnly>
     </div>
   )

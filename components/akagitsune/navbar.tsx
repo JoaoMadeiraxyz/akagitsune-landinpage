@@ -4,17 +4,20 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { Menu, X } from 'lucide-react'
+import { useI18n } from '@/components/i18n-provider'
+import { LanguageSwitcher } from './language-switcher'
 
 const navLinks = [
-  { label: 'About', href: '#about' },
-  { label: 'Performance', href: '#performance' },
-  { label: 'Protocol', href: '#protocol' },
-  { label: 'Scope', href: '#scope' },
-  { label: 'Characters', href: '#characters' },
-  { label: 'Roadmap', href: '#roadmap' },
-]
+  { key: 'about', href: '#about' },
+  { key: 'performance', href: '#performance' },
+  { key: 'protocol', href: '#protocol' },
+  { key: 'scope', href: '#scope' },
+  { key: 'characters', href: '#characters' },
+  { key: 'roadmap', href: '#roadmap' },
+] as const
 
 export function Navbar() {
+  const { t } = useI18n()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -43,46 +46,47 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <button onClick={() => handleNav('#hero')} className="flex items-center gap-2 group">
             <div className="relative w-8 h-8">
-              <Image src="/images/logo.png" alt="Akagitsune logo" fill className="object-contain" />
+              <Image src="/images/logo.png" alt={t.nav.logoAlt} fill className="object-contain" />
             </div>
             <span className="font-display font-bold text-lg tracking-tight text-foreground group-hover:text-primary transition-colors">
               Akagitsune
             </span>
           </button>
 
-          {/* Desktop links */}
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link: { label: string; href: string }) => (
+            {navLinks.map((link) => (
               <button
                 key={link.href}
                 onClick={() => handleNav(link.href)}
                 className="px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-primary/5"
               >
-                {link.label}
+                {t.nav[link.key]}
               </button>
             ))}
+            <LanguageSwitcher className="ml-1" />
             <a
               href="https://github.com/JoaoMadeiraxyz/akagitsune"
               target="_blank"
               rel="noopener noreferrer"
               className="ml-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors glow-red-sm"
             >
-              GitHub
+              {t.nav.github}
             </a>
           </div>
 
-          {/* Mobile toggle */}
-          <button
-            className="md:hidden p-2 text-foreground"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="md:hidden flex items-center gap-1">
+            <LanguageSwitcher />
+            <button
+              className="p-2 text-foreground"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={t.nav.toggleMenu}
+            >
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
       </motion.nav>
 
-      {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -93,13 +97,13 @@ export function Navbar() {
             transition={{ duration: 0.2 }}
           >
             <div className="flex flex-col gap-2">
-              {navLinks.map((link: { label: string; href: string }) => (
+              {navLinks.map((link) => (
                 <button
                   key={link.href}
                   onClick={() => handleNav(link.href)}
                   className="text-left px-4 py-3 text-lg text-foreground hover:text-primary hover:bg-primary/5 rounded-md transition-colors"
                 >
-                  {link.label}
+                  {t.nav[link.key]}
                 </button>
               ))}
               <a
@@ -108,7 +112,7 @@ export function Navbar() {
                 rel="noopener noreferrer"
                 className="mt-4 px-4 py-3 text-lg font-medium bg-primary text-primary-foreground rounded-md text-center glow-red-sm"
               >
-                GitHub
+                {t.nav.github}
               </a>
             </div>
           </motion.div>
