@@ -6,12 +6,14 @@ import { SafeNumber } from '@/components/safe-format'
 import { FadeIn } from '@/components/ui/animate'
 import { P99Chart } from '@/components/akagitsune/p99-chart'
 import { useI18n } from '@/components/i18n-provider'
-import { benchmarkRuns, slo, sustainedLoad } from '@/lib/benchmark-data'
+import { benchmarkRuns, slo, sustainedLoad, topicsGoalRun } from '@/lib/benchmark-data'
 
 const shapeLegend = [
   { shape: 'ingest', swatch: 'bg-chart-4' },
   { shape: 'mesh', swatch: 'bg-chart-5' },
   { shape: 'fanout', swatch: 'bg-primary' },
+  { shape: 'topics', swatch: 'border-2 border-primary' },
+  { shape: 'explore', swatch: 'border-2 border-muted-foreground' },
 ] as const
 
 function verdictKey(p99: number, deliveryPct: number) {
@@ -34,7 +36,7 @@ export function PerformanceSection() {
               {p.title}
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-lg">
-              {p.intro(slo.p99BandMs[0], slo.p99CeilingMs)}
+              {p.intro(slo.p99BandMs[0], slo.p99CeilingMs, formatNumber(topicsGoalRun.serviceP99Ms, 1))}
             </p>
           </div>
         </FadeIn>
@@ -48,10 +50,15 @@ export function PerformanceSection() {
               <p className="mt-1 text-sm text-muted-foreground">
                 {p.chartCaption(slo.p99CeilingMs)}
               </p>
-              <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-3">
+              <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
                 {shapeLegend.map((item) => (
                   <li key={item.shape} className="flex items-baseline gap-2">
-                    <span aria-hidden className={`mt-1.5 h-0.5 w-4 shrink-0 rounded-full ${item.swatch}`} />
+                    <span
+                      aria-hidden
+                      className={`shrink-0 rounded-full ${
+                        item.swatch.startsWith('border') ? 'mt-1 h-2.5 w-2.5 mx-0.5' : 'mt-1.5 h-0.5 w-4'
+                      } ${item.swatch}`}
+                    />
                     <span className="font-mono text-xs text-foreground">{item.shape}</span>
                     <span className="text-xs text-muted-foreground">{p.shapeGloss[item.shape]}</span>
                   </li>

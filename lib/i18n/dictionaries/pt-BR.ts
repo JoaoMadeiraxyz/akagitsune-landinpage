@@ -26,7 +26,7 @@ export const ptBR: Dictionary = {
     taglineAfter: ' — ele repassa, não interpreta.',
     stats: {
       sustained: 'Entregas sustentadas',
-      p99: 'Pior p99 em 1M/s',
+      p99: 'Pior p99 em 1M/s, um tópico',
       delivered: 'Entregues em 1M/s',
     },
     viewOnGithub: 'Ver no GitHub',
@@ -46,7 +46,7 @@ export const ptBR: Dictionary = {
       {
         title: 'Tempo Real, Sempre',
         description:
-          'Construído em Rust assíncrono, com um caminho crítico sem locks. Cada mensagem é serializada uma única vez — não uma vez por destinatário — e então transmitida instantaneamente a todos os clientes conectados.',
+          'Construído em Rust assíncrono, com um caminho crítico sem locks. Cada mensagem é serializada uma única vez — não uma vez por destinatário — e então entregue apenas às conexões assinantes do seu tópico.',
       },
       {
         title: 'Backpressure em Vez de Quebra',
@@ -54,9 +54,9 @@ export const ptBR: Dictionary = {
           'Quando um cliente lento fica para trás, o Akagitsune descarta as mensagens enfileiradas dele e o avisa — em vez de atrasar todos os outros. Os rápidos continuam rápidos; os lentos ganham uma segunda chance.',
       },
       {
-        title: 'Três Tarefas, Uma Conexão',
+        title: 'Duas Tarefas, Uma Conexão',
         description:
-          'Cada conexão executa um leitor (ingest), uma ponte (fanout) e um escritor (flush). Filas com tamanho limitado por toda parte, sem locks compartilhados, clones de mensagem com contagem de referência. Limpo, previsível, depurável.',
+          'Cada conexão executa um leitor (ingest e fanout para as caixas de entrada dos assinantes) e um escritor (flush). Filas com tamanho limitado por toda parte, sem locks no código do gateway, clones de mensagem com contagem de referência. Limpo, previsível, depurável.',
       },
     ],
     getItRunning: 'Ponha para rodar',
@@ -65,19 +65,22 @@ export const ptBR: Dictionary = {
   performance: {
     eyebrow: 'Desempenho',
     title: 'Um milhão, sustentado',
-    intro: (floorMs, ceilingMs) =>
-      `A meta é um milhão de entregas por segundo dentro de um orçamento de p99 de ${floorMs}–${ceilingMs} ms. Os três formatos de tráfego passam com folga, aguentando até 50% a mais que a meta. Além disso, eles se separam: o fanout é o mais caro e é o primeiro a quebrar.`,
+    intro: (floorMs, ceilingMs, topicsP99) =>
+      `A meta é um milhão de entregas por segundo dentro de um orçamento de p99 de ${floorMs}–${ceilingMs} ms. Em um único tópico, os três formatos de tráfego passam e continuam passando com o dobro da carga. Espalhado por 100 tópicos, o mesmo milhão de entregas chega inteiro, mas o p99 fica em ${topicsP99} ms, acima do orçamento.`,
     shapeGloss: {
       ingest: 'muitos emissores, um tópico',
       mesh: 'todos falam com todos',
-      fanout: 'um emissor, todos os sockets',
+      fanout: 'poucos emissores, muitos sockets',
+      topics: 'mesma carga, 100 tópicos',
+      explore: 'sonda além da meta',
     },
     chartTitle: 'p99 de serviço contra a carga oferecida',
     chartCaption: (ceilingMs) =>
-      `Escala logarítmica, porque a variação vai de 3 ms a 825 ms. A linha tracejada é o orçamento de ${ceilingMs} ms; a faixa sombreada acima dela está fora da especificação.`,
+      `Escala logarítmica, porque a variação vai de 3 ms a 28 ms. A linha tracejada é o orçamento de ${ceilingMs} ms; a faixa sombreada acima dela está fora da especificação.`,
     budgetLabel: (ceilingMs) => `orçamento de ${ceilingMs} ms`,
+    topicsLabel: (p99) => `100 tópicos: ${p99} ms`,
     chartNote:
-      'O ingest para em 1,5M porque nunca foi executado acima disso. O marcador vazio em 2,78M é um formato exploratório à parte, e o único ponto em que o que falha é a entrega, não a latência.',
+      'O ingest não foi executado em 2M. Os marcadores cinza vazios em 3M e 3,59M são sondas exploratórias, e também aguentaram: todas as mensagens entregues, nenhum ponto de ruptura encontrado ainda. O marcador vermelho vazio em 1M é a execução espalhada por tópicos, a única na carga da meta acima do orçamento.',
     offeredReadout: 'entregas/s oferecidas',
     delivered: 'entregues',
     tableTitle: 'Cada execução, por completo',
@@ -92,9 +95,9 @@ export const ptBR: Dictionary = {
       within: 'dentro do orçamento',
     },
     footnoteBefore: (hardware) =>
-      `Todos os números vêm de uma única execução local em ${hardware} — não de um deployment em produção. A latência é a latência de serviço: chegada da mensagem menos o envio real, a mais conservadora das duas medidas registradas pelo harness. A maior carga que todos os formatos seguraram dentro do orçamento foi de `,
+      `Todos os números vêm de uma única execução local em ${hardware} — não de um deployment em produção. A latência é a latência de serviço: chegada da mensagem menos o envio real, a mais conservadora das duas medidas registradas pelo harness. A maior carga que qualquer execução segurou dentro do orçamento foi de `,
     footnoteAfter:
-      ' de entregas por segundo. Os scripts e a metodologia do benchmark estão no repositório.',
+      ' de entregas por segundo. Duas execuções pesadas em tópicos, 5.000 tópicos e entra-e-sai de assinantes, também estouram o orçamento, e a causa ainda não foi isolada: no primeiro caso o gerador de carga pode ser o gargalo, e no segundo pode ser a cópia da lista de assinantes a cada entrada e saída. Cada conexão agora tem sua caixa de entrada, então a memória por conexão subiu de cerca de 150 KiB para cerca de 200 KiB. Os scripts e a metodologia do benchmark estão no repositório.',
     hardware:
       'um Apple M4 Pro, 14 núcleos, build de release, com gateway e gerador de carga na mesma máquina',
   },
@@ -102,12 +105,12 @@ export const ptBR: Dictionary = {
     eyebrow: 'Protocolo',
     title: 'Simples por design',
     intro:
-      'Sem handshake, sem negociação de autenticação, sem a dança de assinatura de tópicos. Conecte, receba seu ID, comece a enviar. Quatro tipos de frame cobrem tudo.',
+      'Sem handshake e sem negociação de autenticação. Conecte, receba seu ID, assine um tópico, comece a publicar. Quatro tipos de frame cobrem tudo.',
     tabs: {
       welcome: {
         label: 'Boas-vindas',
         description:
-          'Ao conectar, o servidor envia imediatamente um frame de boas-vindas com o UUID atribuído ao cliente. Nenhum handshake necessário — você já está dentro.',
+          'Ao conectar, o servidor envia imediatamente um frame de boas-vindas com o UUID atribuído ao cliente. Nenhum handshake necessário — mas nada é entregue até você assinar um tópico.',
         code: `// Servidor → Cliente (ao conectar)
 {
   "type": "welcome",
@@ -115,15 +118,21 @@ export const ptBR: Dictionary = {
 }`,
       },
       text: {
-        label: 'Frames de Texto',
+        label: 'Tópicos',
         description:
-          'Qualquer JSON válido enviado pelo cliente é validado, encapsulado em um envelope com o ID do remetente e repassado a todas as outras conexões. O payload nunca é desserializado — é encaminhado byte a byte dentro do envelope.',
+          'Um tópico é uma chave opaca de 1 a 255 bytes escolhida pelo cliente. Publique nele e só os outros assinantes recebem a mensagem. O payload nunca é desserializado — é encaminhado byte a byte dentro do envelope.',
         code: `// O cliente envia:
-{ "action": "move", "x": 42 }
+{ "type": "subscribe", "topic": "lobby" }
+{ "type": "publish", "topic": "lobby",
+  "data": { "action": "move", "x": 42 } }
 
-// Todos os outros clientes recebem:
+// O servidor responde à assinatura:
+{ "type": "subscribed", "topic": "lobby" }
+
+// Todos os outros assinantes de "lobby" recebem:
 {
   "type": "message",
+  "topic": "lobby",
   "from": "a3f1b2c4-5678-...",
   "data": { "action": "move", "x": 42 }
 }`,
@@ -131,20 +140,24 @@ export const ptBR: Dictionary = {
       binary: {
         label: 'Frames Binários',
         description:
-          'Frames binários são repassados byte a byte, sem envelope e sem transformação. Use-os para protobuf, msgpack, trechos de áudio ou qualquer coisa que não seja JSON.',
-        code: `// O cliente envia: <bytes brutos>
-// Todos os outros clientes recebem:
-//   <os mesmos bytes brutos, intactos>`,
+          'Frames binários carregam um byte com o tamanho do tópico, o tópico e depois o payload, que é repassado intacto. Os assinantes também recebem o UUID do remetente. Use-os para protobuf, msgpack, trechos de áudio ou qualquer coisa que não seja JSON.',
+        code: `// O cliente envia:
+//   [tamanho do tópico: u8][tópico][payload]
+// Os assinantes recebem:
+//   [tamanho do tópico: u8][tópico][uuid do remetente: 16 bytes][payload]`,
       },
       control: {
         label: 'Frames de Controle',
         description:
-          'Quando a fila de um cliente lento transborda, o gateway descarta as mensagens enfileiradas desse cliente e envia um aviso. Erros são informados como JSON estruturado. Frames acima de 64 KiB são rejeitados.',
-        code: `// Aviso de backpressure (cliente lento):
+          'Quando a caixa de entrada de um cliente lento transborda, o gateway descarta as mensagens mais antigas dele e envia um aviso. Erros são JSON estruturado e informam o tópico a que se referem. Frames acima de 64 KiB são rejeitados, e uma conexão tem no máximo 64 assinaturas.',
+        code: `// Sair de um tópico:
+{ "type": "unsubscribe", "topic": "lobby" }
+
+// Aviso de backpressure (cliente lento):
 { "type": "warning", "dropped": 12 }
 
-// Erro (ex.: JSON inválido):
-{ "type": "error", "message": "invalid JSON" }`,
+// Erro (ex.: publish sem data):
+{ "type": "error", "topic": "lobby", "message": "..." }`,
       },
     },
   },
@@ -159,7 +172,7 @@ export const ptBR: Dictionary = {
       'Gerenciamento e ciclo de vida de conexões',
       'Repasse de mensagens e enquadramento em envelope',
       'Backpressure e tratamento de estouro de fila',
-      'Roteamento por tópico / sala (planejado)',
+      'Roteamento por tópico',
       'Rate limiting por conexão (planejado)',
       'Autenticação e controle de admissão (planejado)',
       'Semântica de entrega e confirmações',
@@ -177,9 +190,9 @@ export const ptBR: Dictionary = {
   },
   characters: {
     eyebrow: 'Os Agentes',
-    title: 'Quatro tarefas, quatro rostos',
+    title: 'Quatro papéis, quatro rostos',
     intro:
-      'Cada conexão no Akagitsune executa três tarefas concorrentes — leitor, ponte e escritor — mais uma líder que as une. Conheça o elenco.',
+      'Cada conexão no Akagitsune executa duas tarefas concorrentes — leitor e escritor — em torno de um registro de tópicos compartilhado, mais uma líder que as une. Conheça o elenco.',
     viewFullSize: (name) => `Ver ${name} em tamanho real`,
     fullSize: (name) => `${name} em tamanho real`,
     cast: {
@@ -193,19 +206,19 @@ export const ptBR: Dictionary = {
         role: 'A Mensageira',
         task: 'Tarefa Leitora',
         description:
-          'A Leitora. Kaze intercepta cada frame recebido no instante em que chega — valida o JSON, monta o envelope uma única vez e publica no barramento de broadcast. Uma serialização por mensagem, não por destinatário. A meia-máscara e o pergaminho de dados a marcam como o primeiro ponto de contato: ela toca o fio para que ninguém mais precise.',
+          'A Leitora. Kaze intercepta cada frame recebido no instante em que chega — valida o frame de controle, monta o envelope uma única vez e o distribui aos assinantes do tópico. Uma serialização por mensagem, não por destinatário. A meia-máscara e o pergaminho de dados a marcam como o primeiro ponto de contato: ela toca o fio para que ninguém mais precise.',
       },
       gatekeeper: {
         role: 'O Guardião',
-        task: 'Tarefa Ponte',
+        task: 'Registro de Tópicos',
         description:
-          'A Ponte. Tetsu fica entre o barramento de broadcast e cada fila de conexão local. Ele recebe do barramento, ignora as mensagens do próprio remetente e encaminha o resto. Seu corpo blindado e a lanterna brilhante encarnam o princípio: proteger o fluxo, nunca o conteúdo. Robusto, confiável, sempre vigilante.',
+          'O Registro. Tetsu guarda o mapa sem locks de tópicos para assinantes e fica entre cada publicação e cada caixa de entrada de conexão. Ele ignora as mensagens do próprio remetente e entrega o resto apenas às conexões assinantes daquele tópico. Seu corpo blindado e a lanterna brilhante encarnam o princípio: proteger o fluxo, nunca o conteúdo. Robusto, confiável, sempre vigilante.',
       },
       trickster: {
         role: 'O Trapaceiro',
         task: 'Tarefa Escritora',
         description:
-          'O Escritor. Hayate esvazia a fila local em lotes — um flush por lote, nunca trabalho desperdiçado. Só o Escritor toca o sink. Sua agilidade acrobática espelha a velocidade da tarefa escritora: esvaziar a fila, dar flush, repetir. As lâminas gêmeas? Uma para cada ponta do duto.',
+          'O Escritor. Hayate esvazia a caixa de entrada da conexão em lotes — um flush por lote, nunca trabalho desperdiçado. Só o Escritor toca o sink. Sua agilidade acrobática espelha a velocidade da tarefa escritora: esvaziar a fila, dar flush, repetir. As lâminas gêmeas? Uma para cada ponta do duto.',
       },
     },
   },
@@ -213,18 +226,18 @@ export const ptBR: Dictionary = {
     eyebrow: 'Roadmap',
     title: 'O que vem a seguir',
     intro:
-      'O Akagitsune está em desenvolvimento ativo. Estas são as funcionalidades no horizonte — todas passam no teste de escopo.',
-    status: { next: 'Próximo', planned: 'Planejado', exploring: 'Em exploração' },
+      'O Akagitsune está em desenvolvimento ativo. O roteamento por tópico já chegou; estas são as funcionalidades no horizonte — todas passam no teste de escopo.',
+    status: { achieved: 'Concluído', next: 'Próximo', planned: 'Planejado', exploring: 'Em exploração' },
     items: [
       {
-        title: 'Roteamento por Tópico e Sala',
+        title: 'Roteamento por Tópico',
         description:
-          'Substituir o barramento de broadcast único por um modelo de assinatura baseado em tópicos. Clientes assinam salas; mensagens vão apenas aos assinantes — eliminando o fanout O(N²).',
+          'O barramento de broadcast único acabou. Clientes assinam tópicos e uma publicação chega apenas aos outros assinantes daquele tópico, por meio de um registro sem locks e de uma caixa de entrada limitada por conexão.',
       },
       {
         title: 'Autenticação',
         description:
-          'Controle de admissão baseado em token no momento da conexão. O gateway verifica a identidade sem interpretar o payload — a autenticação é da camada de transporte, não do conteúdo.',
+          'Controle de admissão baseado em token no momento da conexão. O gateway verifica a identidade sem interpretar o payload — a autenticação é da camada de transporte, não do conteúdo. Também libera permissões de leitura e escrita por tópico.',
       },
       {
         title: 'Rate Limiting por Conexão',

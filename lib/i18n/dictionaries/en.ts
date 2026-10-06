@@ -24,7 +24,7 @@ export const en = {
     taglineAfter: ' — it relays, it does not interpret.',
     stats: {
       sustained: 'Deliveries sustained',
-      p99: 'Worst p99 at 1M/s',
+      p99: 'Worst p99 at 1M/s, one topic',
       delivered: 'Delivered at 1M/s',
     },
     viewOnGithub: 'View on GitHub',
@@ -44,7 +44,7 @@ export const en = {
       {
         title: 'Real-Time, Always',
         description:
-          'Built on asynchronous Rust with a lock-free hot path. Every message is serialized once — not once per receiver — then broadcast to all connected peers instantly.',
+          'Built on asynchronous Rust with a lock-free hot path. Every message is serialized once — not once per receiver — then delivered only to the connections subscribed to its topic.',
       },
       {
         title: 'Backpressure Over Breakage',
@@ -52,9 +52,9 @@ export const en = {
           'When a slow client falls behind, Akagitsune drops its queued messages and warns it — rather than slowing down everyone else. The fast stay fast; the slow get a second chance.',
       },
       {
-        title: 'Three Tasks, One Connection',
+        title: 'Two Tasks, One Connection',
         description:
-          'Each connection runs a reader (ingest), a bridge (fanout), and a writer (flush). Bounded queues everywhere, no shared locks, reference-counted message clones. Clean, predictable, debuggable.',
+          'Each connection runs a reader (ingest and fanout into subscriber inboxes) and a writer (flush). Bounded queues everywhere, no locks in gateway code, reference-counted message clones. Clean, predictable, debuggable.',
       },
     ],
     getItRunning: 'Get it running',
@@ -63,19 +63,22 @@ export const en = {
   performance: {
     eyebrow: 'Performance',
     title: 'One million, sustained',
-    intro: (floorMs: number, ceilingMs: number) =>
-      `The target is a million deliveries a second inside a ${floorMs}–${ceilingMs} ms p99 budget. All three traffic shapes clear it, and clear half again as much. Past that they part ways: fanout is the expensive one, and it breaks first.`,
+    intro: (floorMs: number, ceilingMs: number, topicsP99: string) =>
+      `The target is a million deliveries a second inside a ${floorMs}–${ceilingMs} ms p99 budget. On a single topic all three traffic shapes clear it, and keep clearing it at twice the load. Spread across 100 topics the same million deliveries all arrive, but p99 lands at ${topicsP99} ms, over budget.`,
     shapeGloss: {
       ingest: 'many senders, one topic',
       mesh: 'everyone talks to everyone',
-      fanout: 'one sender, every socket',
+      fanout: 'few senders, many sockets',
+      topics: 'same load, 100 topics',
+      explore: 'probe past the goal',
     },
     chartTitle: 'Service p99 against offered load',
     chartCaption: (ceilingMs: number) =>
-      `Log scale, because the spread runs from 3 ms to 825 ms. The dashed rule is the ${ceilingMs} ms budget; the tinted band above it is out of spec.`,
+      `Log scale, because the spread runs from 3 ms to 28 ms. The dashed rule is the ${ceilingMs} ms budget; the tinted band above it is out of spec.`,
     budgetLabel: (ceilingMs: number) => `${ceilingMs} ms budget`,
+    topicsLabel: (p99: string) => `100 topics: ${p99} ms`,
     chartNote:
-      'Ingest stops at 1.5M because it was never run above it. The hollow marker at 2.78M is a separate exploratory shape, and the only point where delivery rather than latency is what gives out.',
+      'Ingest was not run at 2M. The hollow grey markers at 3M and 3.59M are exploratory probes, and they held too: every message delivered, no breaking point found yet. The hollow red marker at 1M is the topic-spread run, the only goal-load run over budget.',
     offeredReadout: 'deliveries/s offered',
     delivered: 'delivered',
     tableTitle: 'Every run, in full',
@@ -90,9 +93,9 @@ export const en = {
       within: 'within budget',
     },
     footnoteBefore: (hardware: string) =>
-      `Every number is from a single local run on ${hardware} — not a production deployment. Latency is service latency: message arrival minus actual send, the more conservative of the two figures the harness records. The highest load every shape held inside the budget was `,
+      `Every number is from a single local run on ${hardware} — not a production deployment. Latency is service latency: message arrival minus actual send, the more conservative of the two figures the harness records. The highest load any run held inside the budget was `,
     footnoteAfter:
-      ' deliveries a second. Benchmark scripts and methodology are in the repository.',
+      ' deliveries a second. Two topic-heavy runs, 5,000 topics and membership churn, also miss the budget, and the cause is not yet isolated: the load generator may be the bottleneck in the first case, and copying the subscriber list on every join and leave may be in the second. Every connection now owns an inbox, so memory per connection rose from about 150 KiB to about 200 KiB. Benchmark scripts and methodology are in the repository.',
     hardware:
       'Apple M4 Pro, 14 cores, release build, gateway and load generator on the same machine',
   },
@@ -100,12 +103,12 @@ export const en = {
     eyebrow: 'Protocol',
     title: 'Simple by design',
     intro:
-      'No handshake, no auth negotiation, no subscription dance. Connect, receive your ID, start sending. Four frame types cover everything.',
+      'No handshake and no auth negotiation. Connect, receive your ID, subscribe to a topic, start publishing. Four kinds of frame cover everything.',
     tabs: {
       welcome: {
         label: 'Welcome',
         description:
-          "On connect, the server immediately sends a welcome frame with the client's assigned UUID. No handshake required — you're in.",
+          "On connect, the server immediately sends a welcome frame with the client's assigned UUID. No handshake required — but nothing is delivered until you subscribe to a topic.",
         code: `// Server → Client (on connect)
 {
   "type": "welcome",
@@ -113,15 +116,21 @@ export const en = {
 }`,
       },
       text: {
-        label: 'Text Frames',
+        label: 'Topics',
         description:
-          "Any valid JSON the client sends is validated, wrapped in an envelope with the sender's ID, and relayed to every other connection. The payload is never deserialized — forwarded byte-for-byte inside the envelope.",
+          'A topic is an opaque key of 1–255 bytes that the client chooses. Publish to it and only the other subscribers receive the message. The payload is never deserialized — forwarded byte-for-byte inside the envelope.',
         code: `// Client sends:
-{ "action": "move", "x": 42 }
+{ "type": "subscribe", "topic": "lobby" }
+{ "type": "publish", "topic": "lobby",
+  "data": { "action": "move", "x": 42 } }
 
-// Every other client receives:
+// Server answers the subscribe:
+{ "type": "subscribed", "topic": "lobby" }
+
+// Every other subscriber of "lobby" receives:
 {
   "type": "message",
+  "topic": "lobby",
   "from": "a3f1b2c4-5678-...",
   "data": { "action": "move", "x": 42 }
 }`,
@@ -129,20 +138,24 @@ export const en = {
       binary: {
         label: 'Binary Frames',
         description:
-          "Binary frames are relayed byte-for-byte with no envelope and no transformation. Use them for protobuf, msgpack, audio chunks, or anything that isn't JSON.",
-        code: `// Client sends: <raw bytes>
-// Every other client receives:
-//   <same raw bytes, untouched>`,
+          "Binary frames carry a one-byte topic length and the topic, then the payload, which is relayed untouched. Subscribers also get the sender's UUID. Use them for protobuf, msgpack, audio chunks, or anything that isn't JSON.",
+        code: `// Client sends:
+//   [topic length: u8][topic][payload]
+// Subscribers receive:
+//   [topic length: u8][topic][sender uuid: 16 bytes][payload]`,
       },
       control: {
         label: 'Control Frames',
         description:
-          "When a slow client's queue overflows, the gateway drops queued messages for that client and sends a warning. Errors are reported as structured JSON. Frames over 64 KiB are rejected.",
-        code: `// Backpressure warning (slow client):
+          "When a slow client's inbox overflows, the gateway drops its oldest queued messages and sends a warning. Errors are structured JSON and name the topic they concern. Frames over 64 KiB are rejected, and a connection holds at most 64 subscriptions.",
+        code: `// Leave a topic:
+{ "type": "unsubscribe", "topic": "lobby" }
+
+// Backpressure warning (slow client):
 { "type": "warning", "dropped": 12 }
 
-// Error (e.g., invalid JSON):
-{ "type": "error", "message": "invalid JSON" }`,
+// Error (e.g., publish without data):
+{ "type": "error", "topic": "lobby", "message": "..." }`,
       },
     },
   },
@@ -157,7 +170,7 @@ export const en = {
       'Connection management & lifecycle',
       'Message relay & envelope framing',
       'Backpressure & queue overflow handling',
-      'Topic / room-based routing (planned)',
+      'Topic-based routing',
       'Per-connection rate limiting (planned)',
       'Auth & admission control (planned)',
       'Delivery semantics & acknowledgements',
@@ -175,9 +188,9 @@ export const en = {
   },
   characters: {
     eyebrow: 'The Operatives',
-    title: 'Four tasks, four faces',
+    title: 'Four roles, four faces',
     intro:
-      'Every connection in Akagitsune runs three concurrent tasks — reader, bridge, and writer — plus a lead that ties them together. Meet the cast.',
+      'Every connection in Akagitsune runs two concurrent tasks — reader and writer — around one shared topic registry, plus a lead that ties them together. Meet the cast.',
     viewFullSize: (name: string) => `View ${name} full size`,
     fullSize: (name: string) => `${name} full size`,
     cast: {
@@ -191,19 +204,19 @@ export const en = {
         role: 'The Messenger',
         task: 'Reader Task',
         description:
-          'The Reader. Kaze intercepts every incoming frame the instant it arrives — validates the JSON, constructs the envelope once, and publishes to the broadcast bus. One serialization per message, not per receiver. Her half-mask and data scroll mark her as the first point of contact: she touches the wire so nobody else has to.',
+          'The Reader. Kaze intercepts every incoming frame the instant it arrives — validates the control frame, constructs the envelope once, and fans it out to the subscribers of the topic. One serialization per message, not per receiver. Her half-mask and data scroll mark her as the first point of contact: she touches the wire so nobody else has to.',
       },
       gatekeeper: {
         role: 'The Gatekeeper',
-        task: 'Bridge Task',
+        task: 'Topic Registry',
         description:
-          "The Bridge. Tetsu stands between the broadcast bus and every local connection queue. He receives from the bus, skips the sender's own messages, and forwards the rest. His armored frame and glowing lantern embody the principle: guard the flow, never the content. Sturdy, reliable, always watching.",
+          "The Registry. Tetsu keeps the lock-free map from topic to subscribers and sits between every publish and every connection inbox. He skips the sender's own messages and hands the rest only to the connections subscribed to that topic. His armored frame and glowing lantern embody the principle: guard the flow, never the content. Sturdy, reliable, always watching.",
       },
       trickster: {
         role: 'The Trickster',
         task: 'Writer Task',
         description:
-          "The Writer. Hayate drains the local queue in batches — one flush per batch, never wasted work. Only the Writer touches the sink. His acrobatic agility mirrors the writer task's speed: clear the queue, flush, repeat. The twin blades? One for each end of the pipe.",
+          "The Writer. Hayate drains the connection's inbox in batches — one flush per batch, never wasted work. Only the Writer touches the sink. His acrobatic agility mirrors the writer task's speed: clear the queue, flush, repeat. The twin blades? One for each end of the pipe.",
       },
     },
   },
@@ -211,18 +224,18 @@ export const en = {
     eyebrow: 'Roadmap',
     title: 'What comes next',
     intro:
-      'Akagitsune is under active development. These are the features on the horizon — all of them pass the scope test.',
-    status: { next: 'Next', planned: 'Planned', exploring: 'Exploring' },
+      'Akagitsune is under active development. Topic routing has landed; these are the features on the horizon — all of them pass the scope test.',
+    status: { achieved: 'Achieved', next: 'Next', planned: 'Planned', exploring: 'Exploring' },
     items: [
       {
-        title: 'Topic & Room Routing',
+        title: 'Topic Routing',
         description:
-          'Replace the single broadcast bus with a topic-based subscription model. Clients subscribe to rooms; messages route only to subscribers — eliminating O(N²) fanout.',
+          'The single broadcast bus is gone. Clients subscribe to topics and a publish reaches only the other subscribers of its topic, through a lock-free registry and one bounded inbox per connection.',
       },
       {
         title: 'Authentication',
         description:
-          'Token-based admission control at connection time. The gateway verifies identity without interpreting payload — auth is transport-level, not content-level.',
+          'Token-based admission control at connection time. The gateway verifies identity without interpreting payload — auth is transport-level, not content-level. It also unlocks per-topic read and write permissions.',
       },
       {
         title: 'Per-Connection Rate Limiting',

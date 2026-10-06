@@ -16,7 +16,7 @@ import {
 } from 'recharts'
 import { ClientOnly } from '@/components/client-only'
 import { useI18n } from '@/components/i18n-provider'
-import { benchmarkRuns, chartedShapes, cliffRun, p99ByLoad, slo, type ChartedShape } from '@/lib/benchmark-data'
+import { benchmarkRuns, chartedShapes, p99ByLoad, slo, topicsGoalRun, type ChartedShape } from '@/lib/benchmark-data'
 
 const shapeColor: Record<ChartedShape, string> = {
   ingest: 'hsl(var(--chart-4))',
@@ -83,7 +83,7 @@ function Plot() {
       <ComposedChart data={p99ByLoad} margin={{ top: 12, right: 30, bottom: 4, left: 4 }}>
         <ReferenceArea
           y1={slo.p99CeilingMs}
-          y2={1100}
+          y2={40}
           fill="hsl(var(--primary))"
           fillOpacity={0.05}
           stroke="none"
@@ -101,13 +101,13 @@ function Plot() {
         />
         <YAxis
           scale="log"
-          domain={[2, 1100]}
-          ticks={[3, 10, 30, 100, 300, 1000]}
+          domain={[2, 40]}
+          ticks={[3, 5, 10, 20, 30]}
           tickFormatter={(v: number) => `${v}`}
           stroke={axis}
           tick={{ fill: axisText, fontSize: 11, fontFamily: 'var(--font-mono)' }}
           tickLine={false}
-          width={34}
+          width={28}
         />
         <ReferenceLine
           y={slo.p99CeilingMs}
@@ -143,7 +143,22 @@ function Plot() {
           />
         ))}
         <Line
-          dataKey="cliff"
+          dataKey="explore"
+          stroke="none"
+          legendType="none"
+          dot={{
+            r: 5,
+            fill: 'hsl(var(--background))',
+            stroke: 'hsl(var(--muted-foreground))',
+            strokeWidth: 2,
+          }}
+          activeDot={false}
+          isAnimationActive={!reduceMotion}
+          animationBegin={520}
+          animationDuration={600}
+        />
+        <Line
+          dataKey="topics"
           stroke="none"
           legendType="none"
           dot={{
@@ -158,11 +173,11 @@ function Plot() {
           animationDuration={600}
         >
           <LabelList
-            dataKey="cliff"
-            position="left"
+            dataKey="topics"
+            position="right"
             offset={12}
             formatter={(v: number | null) =>
-              v == null ? '' : `${formatNumber(cliffRun.deliveryPct, 1)}% ${t.performance.delivered}`
+              v == null ? '' : t.performance.topicsLabel(formatNumber(topicsGoalRun.serviceP99Ms, 1))
             }
             fill="hsl(var(--foreground))"
             fontSize={11}
