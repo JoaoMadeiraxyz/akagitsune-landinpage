@@ -27,13 +27,13 @@ const shapeColor: Record<ChartedShape, string> = {
 const axis = 'hsl(var(--border))'
 const axisText = 'hsl(var(--muted-foreground))'
 
-const formatLoad = (load: number) => {
+const formatLoad = (load: number, formatNumber: (v: number, max?: number, min?: number) => string) => {
   const millions = load / 1_000_000
-  return `${millions % 1 === 0 ? millions : millions.toFixed(2).replace(/0$/, '')}M`
+  return `${formatNumber(millions, 2, 0)}M`
 }
 
 function Readout({ active, label }: { active?: boolean; label?: number }) {
-  const { t } = useI18n()
+  const { t, formatNumber } = useI18n()
   if (!active || typeof label !== 'number') return null
   const runs = benchmarkRuns.filter((r) => r.load === label)
   if (runs.length === 0) return null
@@ -41,7 +41,7 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
   return (
     <div className="rounded-lg border border-border bg-popover/95 px-3 py-2.5 backdrop-blur-sm">
       <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-        {formatLoad(label)} {t.performance.offeredReadout}
+        {formatLoad(label, formatNumber)} {t.performance.offeredReadout}
       </div>
       <table className="mt-2 font-mono text-xs">
         <tbody>
@@ -58,13 +58,13 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
                 </span>
               </td>
               <td className="pr-3 py-0.5 text-right text-muted-foreground">
-                p50 {run.serviceP50Ms.toFixed(2)}
+                p50 {formatNumber(run.serviceP50Ms, 2)}
               </td>
               <td className="pr-3 py-0.5 text-right text-foreground">
-                p99 {run.serviceP99Ms.toFixed(2)} ms
+                p99 {formatNumber(run.serviceP99Ms, 2)} ms
               </td>
               <td className="py-0.5 text-right text-muted-foreground">
-                {run.deliveryPct.toFixed(run.deliveryPct === 100 ? 0 : 2)}% {t.performance.delivered}
+                {formatNumber(run.deliveryPct, run.deliveryPct === 100 ? 0 : 2)}% {t.performance.delivered}
               </td>
             </tr>
           ))}
@@ -75,7 +75,7 @@ function Readout({ active, label }: { active?: boolean; label?: number }) {
 }
 
 function Plot() {
-  const { t } = useI18n()
+  const { t, formatNumber } = useI18n()
   const reduceMotion = useReducedMotion()
 
   return (
@@ -92,7 +92,7 @@ function Plot() {
         <XAxis
           dataKey="load"
           type="category"
-          tickFormatter={formatLoad}
+          tickFormatter={(load: number) => formatLoad(load, formatNumber)}
           interval={0}
           stroke={axis}
           tick={{ fill: axisText, fontSize: 11, fontFamily: 'var(--font-mono)' }}
@@ -162,7 +162,7 @@ function Plot() {
             position="left"
             offset={12}
             formatter={(v: number | null) =>
-              v == null ? '' : `${cliffRun.deliveryPct.toFixed(1)}% ${t.performance.delivered}`
+              v == null ? '' : `${formatNumber(cliffRun.deliveryPct, 1)}% ${t.performance.delivered}`
             }
             fill="hsl(var(--foreground))"
             fontSize={11}

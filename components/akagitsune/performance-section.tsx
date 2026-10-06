@@ -21,7 +21,7 @@ function verdictKey(p99: number, deliveryPct: number) {
 }
 
 export function PerformanceSection() {
-  const { t, intl } = useI18n()
+  const { t, intl, formatNumber } = useI18n()
   const p = t.performance
   const columns = p.columns
   return (
@@ -111,17 +111,17 @@ export function PerformanceSection() {
                         <td className="px-4 py-2.5 font-mono">{run.shape}</td>
                         <td className="px-4 py-2.5 text-right font-mono tabular-nums">{run.connections}</td>
                         <td className="px-4 py-2.5 text-right font-mono tabular-nums">
-                          {run.serviceP50Ms.toFixed(2)}
+                          {formatNumber(run.serviceP50Ms, 2)}
                         </td>
                         <td
                           className={`px-4 py-2.5 text-right font-mono tabular-nums ${
                             missed ? '' : 'font-semibold'
                           }`}
                         >
-                          {run.serviceP99Ms.toFixed(2)}
+                          {formatNumber(run.serviceP99Ms, 2)}
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono tabular-nums">
-                          {run.deliveryPct.toFixed(run.deliveryPct === 100 ? 0 : 2)}%
+                          {formatNumber(run.deliveryPct, run.deliveryPct === 100 ? 0 : 2)}%
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono text-xs">
                           {p.verdict[verdictKey(run.serviceP99Ms, run.deliveryPct)]}
