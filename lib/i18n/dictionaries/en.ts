@@ -238,19 +238,19 @@ export const en = {
           'Admission control at connection time, through headers, query string or a subprotocol — never as an in-band frame. The gateway verifies identity without interpreting payload.',
       },
       {
-        title: 'Subscription Authorization',
-        description:
-          'Today any connection can read any topic it can guess. Subscribe is the single place where a check goes; the open question is how the gateway learns what a connection may subscribe to without learning any domain vocabulary.',
-      },
-      {
         title: 'Publish Pacing',
         description:
-          'Optional per-publish delay (delay_ms). Proposed, and only starts after authentication and subscription authorization. Before it is kept, repeated benchmark runs must show the lookahead is cheap.',
+          'Optional per-publish delay (delay_ms). Proposed, and only starts after connect-time authentication. Before it is kept, repeated benchmark runs must show the lookahead is cheap.',
       },
       {
         title: 'Per-Connection Rate Limiting',
         description:
           'Ingest rate limits per connection to prevent abuse and smooth traffic spikes. Admission control, decided at the transport layer.',
+      },
+      {
+        title: 'Subscription Authorization',
+        description:
+          'Removed from the plan. The gateway is self-hosted and only the operator\'s own services reach it, so an admitted client is already trusted. It comes back only if an untrusted client, such as a browser, connects directly, which needs a credential issued per connection.',
       },
       {
         title: 'Delivery Acknowledgements',
