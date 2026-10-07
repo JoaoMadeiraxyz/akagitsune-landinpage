@@ -4,13 +4,14 @@ import { Container } from '@/components/layouts/container'
 import { Section } from '@/components/layouts/section'
 import { FadeIn, Stagger, StaggerItem } from '@/components/ui/animate'
 import { useI18n } from '@/components/i18n-provider'
-import { GitBranch, Lock, Gauge, Server, Radio } from 'lucide-react'
+import { GitBranch, Lock, ShieldCheck, Timer, Gauge, Radio } from 'lucide-react'
 
 const roadmapMeta = [
   { icon: GitBranch, status: 'achieved' },
   { icon: Lock, status: 'next' },
+  { icon: ShieldCheck, status: 'planned' },
+  { icon: Timer, status: 'planned' },
   { icon: Gauge, status: 'planned' },
-  { icon: Server, status: 'planned' },
   { icon: Radio, status: 'exploring' },
 ] as const
 

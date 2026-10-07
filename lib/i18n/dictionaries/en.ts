@@ -224,33 +224,38 @@ export const en = {
     eyebrow: 'Roadmap',
     title: 'What comes next',
     intro:
-      'Akagitsune is under active development. Topic routing has landed; these are the features on the horizon — all of them pass the scope test.',
-    status: { achieved: 'Achieved', next: 'Next', planned: 'Planned', exploring: 'Exploring' },
+      'Akagitsune is under active development. Topic routing has landed; the rest is listed in the order it is planned, and every item still has to pass the scope test before it is implemented.',
+    status: { achieved: 'Achieved', next: 'Next', planned: 'Planned', exploring: 'Under consideration' },
     items: [
       {
         title: 'Topic Routing',
         description:
-          'The single broadcast bus is gone. Clients subscribe to topics and a publish reaches only the other subscribers of its topic, through a lock-free registry and one bounded inbox per connection.',
+          'A publish reaches only the subscribers of its topic. The single broadcast bus is gone: clients subscribe to topics through a lock-free registry, with one bounded inbox per connection.',
       },
       {
-        title: 'Authentication',
+        title: 'Connect-Time Authentication',
         description:
-          'Token-based admission control at connection time. The gateway verifies identity without interpreting payload — auth is transport-level, not content-level. It also unlocks per-topic read and write permissions.',
+          'Admission control at connection time, through headers, query string or a subprotocol — never as an in-band frame. The gateway verifies identity without interpreting payload.',
+      },
+      {
+        title: 'Subscription Authorization',
+        description:
+          'Today any connection can read any topic it can guess. Subscribe is the single place where a check goes; the open question is how the gateway learns what a connection may subscribe to without learning any domain vocabulary.',
+      },
+      {
+        title: 'Publish Pacing',
+        description:
+          'Optional per-publish delay (delay_ms). Proposed, and only starts after authentication and subscription authorization. Before it is kept, repeated benchmark runs must show the lookahead is cheap.',
       },
       {
         title: 'Per-Connection Rate Limiting',
         description:
-          'Configurable ingest rate limits per connection to prevent abuse and smooth traffic spikes. Token bucket or sliding window, decided at the transport layer.',
-      },
-      {
-        title: 'Multi-Instance Backplane',
-        description:
-          'Horizontal scaling via a shared backplane (Redis, NATS, or a custom protocol) so multiple gateway instances form a single logical relay.',
+          'Ingest rate limits per connection to prevent abuse and smooth traffic spikes. Admission control, decided at the transport layer.',
       },
       {
         title: 'Delivery Acknowledgements',
         description:
-          'Optional per-message ack/nack for clients that need delivery guarantees. Still payload-agnostic — the gateway confirms transport, not meaning.',
+          'Optional per-message ack/nack. Payload-agnostic, but it forces per-message state and a retry path where today there is none, so it needs a decision before any proposal.',
       },
     ],
   },

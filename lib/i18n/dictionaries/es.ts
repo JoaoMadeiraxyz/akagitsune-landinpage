@@ -226,33 +226,38 @@ export const es: Dictionary = {
     eyebrow: 'Hoja de ruta',
     title: 'Lo que viene',
     intro:
-      'Akagitsune está en desarrollo activo. El enrutamiento por tema ya llegó. Estas son las funcionalidades en el horizonte; todas pasan la prueba de alcance.',
-    status: { achieved: 'Logrado', next: 'Siguiente', planned: 'Planificado', exploring: 'Explorando' },
+      'Akagitsune está en desarrollo activo. El enrutamiento por tema ya llegó; el resto se lista en el orden en que se planifica, y cada elemento aún debe pasar la prueba de alcance antes de implementarse.',
+    status: { achieved: 'Logrado', next: 'Siguiente', planned: 'Planificado', exploring: 'En evaluación' },
     items: [
       {
         title: 'Enrutamiento por tema',
         description:
-          'El bus de broadcast único ya no existe. Los clientes se suscriben a temas y una publicación llega solo a los demás suscriptores de ese tema, mediante un registro sin locks y una bandeja de entrada acotada por conexión.',
+          'Una publicación llega solo a los suscriptores de su tema. El bus de broadcast único ya no existe: los clientes se suscriben a temas mediante un registro sin locks, con una bandeja de entrada acotada por conexión.',
       },
       {
-        title: 'Autenticación',
+        title: 'Autenticación al conectar',
         description:
-          'Control de admisión basado en tokens en el momento de conectarse. El gateway verifica la identidad sin interpretar el payload: la autenticación se resuelve en la capa de transporte, no en la del contenido. También habilita permisos de lectura y escritura por tema.',
+          'Control de admisión en el momento de la conexión, mediante headers, query string o un subprotocolo, nunca como un frame in-band. El gateway verifica la identidad sin interpretar el payload.',
+      },
+      {
+        title: 'Autorización de suscripción',
+        description:
+          'Hoy cualquier conexión puede leer cualquier tema que adivine. Subscribe es el único lugar donde va la verificación; la pregunta abierta es cómo averigua el gateway a qué puede suscribirse una conexión sin aprender vocabulario de dominio.',
+      },
+      {
+        title: 'Ritmo de publicación',
+        description:
+          'Retraso opcional por publicación (delay_ms). Ya propuesto; solo empieza después de la autenticación y la autorización de suscripción. Antes de conservarlo, benchmarks repetidos deben mostrar que el lookahead es barato.',
       },
       {
         title: 'Rate limiting por conexión',
         description:
-          'Límites configurables de tasa de entrada (ingest) por conexión para prevenir abusos y suavizar picos de tráfico. Token bucket o ventana deslizante, decidido en la capa de transporte.',
-      },
-      {
-        title: 'Backplane multiinstancia',
-        description:
-          'Escalado horizontal mediante un backplane compartido (Redis, NATS o un protocolo propio) para que varias instancias del gateway formen un único relay lógico.',
+          'Límites de tasa de entrada por conexión para prevenir abusos y suavizar picos de tráfico. Control de admisión, decidido en la capa de transporte.',
       },
       {
         title: 'Confirmaciones de entrega',
         description:
-          'Ack/nack opcional por mensaje para clientes que necesitan garantías de entrega. Sigue siendo agnóstico al payload: el gateway confirma el transporte, no el significado.',
+          'Ack/nack opcional por mensaje. Agnóstico al payload, pero exige estado por mensaje y una ruta de reintento donde hoy no hay ninguna, así que necesita una decisión antes de cualquier propuesta.',
       },
     ],
   },

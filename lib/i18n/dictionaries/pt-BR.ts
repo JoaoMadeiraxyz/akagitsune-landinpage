@@ -226,33 +226,38 @@ export const ptBR: Dictionary = {
     eyebrow: 'Roadmap',
     title: 'O que vem a seguir',
     intro:
-      'O Akagitsune está em desenvolvimento ativo. O roteamento por tópico já chegou; estas são as funcionalidades no horizonte — todas passam no teste de escopo.',
-    status: { achieved: 'Concluído', next: 'Próximo', planned: 'Planejado', exploring: 'Em exploração' },
+      'O Akagitsune está em desenvolvimento ativo. O roteamento por tópico já chegou; o restante está na ordem em que é planejado, e cada item ainda precisa passar no teste de escopo antes de ser implementado.',
+    status: { achieved: 'Concluído', next: 'Próximo', planned: 'Planejado', exploring: 'Em avaliação' },
     items: [
       {
         title: 'Roteamento por Tópico',
         description:
-          'O barramento de broadcast único acabou. Clientes assinam tópicos e uma publicação chega apenas aos outros assinantes daquele tópico, por meio de um registro sem locks e de uma caixa de entrada limitada por conexão.',
+          'Uma publicação chega apenas aos assinantes do seu tópico. O barramento de broadcast único acabou: clientes assinam tópicos por meio de um registro sem locks, com uma caixa de entrada limitada por conexão.',
       },
       {
-        title: 'Autenticação',
+        title: 'Autenticação no Momento da Conexão',
         description:
-          'Controle de admissão baseado em token no momento da conexão. O gateway verifica a identidade sem interpretar o payload — a autenticação é da camada de transporte, não do conteúdo. Também libera permissões de leitura e escrita por tópico.',
+          'Controle de admissão na conexão, por headers, query string ou subprotocolo — nunca como um frame in-band. O gateway verifica a identidade sem interpretar o payload.',
+      },
+      {
+        title: 'Autorização de Assinatura',
+        description:
+          'Hoje qualquer conexão lê qualquer tópico que consiga adivinhar. O subscribe é o único lugar onde a checagem entra; a pergunta em aberto é como o gateway descobre o que uma conexão pode assinar sem aprender nenhum vocabulário de domínio.',
+      },
+      {
+        title: 'Ritmo de Publicação',
+        description:
+          'Atraso opcional por publicação (delay_ms). Já proposto, só começa depois de autenticação e autorização de assinatura. Antes de ser mantido, benchmarks repetidos precisam mostrar que o lookahead é barato.',
       },
       {
         title: 'Rate Limiting por Conexão',
         description:
-          'Limites configuráveis de taxa de ingestão por conexão para evitar abusos e suavizar picos de tráfego. Token bucket ou janela deslizante, decidido na camada de transporte.',
-      },
-      {
-        title: 'Backplane Multi-Instância',
-        description:
-          'Escalabilidade horizontal por meio de um backplane compartilhado (Redis, NATS ou um protocolo próprio), para que várias instâncias do gateway formem um único relay lógico.',
+          'Limites de taxa de ingestão por conexão para evitar abusos e suavizar picos de tráfego. Controle de admissão, decidido na camada de transporte.',
       },
       {
         title: 'Confirmações de Entrega',
         description:
-          'Ack/nack opcional por mensagem para clientes que precisam de garantias de entrega. Continua agnóstico a payload — o gateway confirma o transporte, não o significado.',
+          'Ack/nack opcional por mensagem. Agnóstico a payload, mas exige estado por mensagem e um caminho de retry onde hoje não há nenhum, então precisa de uma decisão antes de qualquer proposta.',
       },
     ],
   },
