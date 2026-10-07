@@ -240,19 +240,19 @@ export const ptBR: Dictionary = {
           'Controle de admissão na conexão, por headers, query string ou subprotocolo — nunca como um frame in-band. O gateway verifica a identidade sem interpretar o payload.',
       },
       {
-        title: 'Autorização de Assinatura',
-        description:
-          'Hoje qualquer conexão lê qualquer tópico que consiga adivinhar. O subscribe é o único lugar onde a checagem entra; a pergunta em aberto é como o gateway descobre o que uma conexão pode assinar sem aprender nenhum vocabulário de domínio.',
-      },
-      {
         title: 'Ritmo de Publicação',
         description:
-          'Atraso opcional por publicação (delay_ms). Já proposto, só começa depois de autenticação e autorização de assinatura. Antes de ser mantido, benchmarks repetidos precisam mostrar que o lookahead é barato.',
+          'Atraso opcional por publicação (delay_ms). Já proposto, só começa depois da autenticação no momento da conexão. Antes de ser mantido, benchmarks repetidos precisam mostrar que o lookahead é barato.',
       },
       {
         title: 'Rate Limiting por Conexão',
         description:
           'Limites de taxa de ingestão por conexão para evitar abusos e suavizar picos de tráfego. Controle de admissão, decidido na camada de transporte.',
+      },
+      {
+        title: 'Autorização de Assinatura',
+        description:
+          'Saiu do plano. O gateway é self-hosted e só os serviços do próprio operador chegam até ele, então um cliente admitido já é confiável. Só volta se um cliente não confiável, como um navegador, se conectar direto, o que exige uma credencial emitida por conexão.',
       },
       {
         title: 'Confirmações de Entrega',

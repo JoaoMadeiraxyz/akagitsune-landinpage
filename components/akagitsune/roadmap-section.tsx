@@ -9,9 +9,9 @@ import { GitBranch, Lock, ShieldCheck, Timer, Gauge, Radio } from 'lucide-react'
 const roadmapMeta = [
   { icon: GitBranch, status: 'achieved' },
   { icon: Lock, status: 'next' },
-  { icon: ShieldCheck, status: 'planned' },
   { icon: Timer, status: 'planned' },
   { icon: Gauge, status: 'planned' },
+  { icon: ShieldCheck, status: 'exploring' },
   { icon: Radio, status: 'exploring' },
 ] as const
 
