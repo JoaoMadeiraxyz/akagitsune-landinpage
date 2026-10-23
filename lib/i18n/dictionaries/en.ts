@@ -103,7 +103,7 @@ export const en = {
     eyebrow: 'Protocol',
     title: 'Simple by design',
     intro:
-      'No handshake and no auth negotiation. Connect, receive your ID, subscribe to a topic, start publishing. Four kinds of frame cover everything.',
+      'No handshake. When authentication is on, the token rides the upgrade request, never an in-band frame. Connect, receive your ID, subscribe to a topic, start publishing. Four kinds of frame cover everything.',
     tabs: {
       welcome: {
         label: 'Welcome',
@@ -118,7 +118,7 @@ export const en = {
       text: {
         label: 'Topics',
         description:
-          'A topic is an opaque key of 1–255 bytes that the client chooses. Publish to it and only the other subscribers receive the message. The payload is never deserialized — forwarded byte-for-byte inside the envelope.',
+          'A topic is an opaque key of 1–255 bytes that the client chooses. Publish to it and only the other subscribers receive the message. The payload is never deserialized — forwarded byte-for-byte inside the envelope. A text publish can carry delay_ms (up to 120 s) to be delivered later.',
         code: `// Client sends:
 { "type": "subscribe", "topic": "lobby" }
 { "type": "publish", "topic": "lobby",
@@ -171,10 +171,10 @@ export const en = {
       'Message relay & envelope framing',
       'Backpressure & queue overflow handling',
       'Topic-based routing',
-      'Per-connection rate limiting (planned)',
-      'Auth & admission control (planned)',
+      'Per-connection rate limiting (after the MVP)',
+      'Connect-time authentication & admission control',
       'Delivery semantics & acknowledgements',
-      'Multi-instance backplane (planned)',
+      'Multi-instance backplane (not scheduled)',
     ],
     outOfScope: [
       'Usernames, profiles, or identity',
@@ -224,40 +224,90 @@ export const en = {
     eyebrow: 'Roadmap',
     title: 'What comes next',
     intro:
-      'Akagitsune is under active development. Topic routing has landed; the rest is listed in the order it is planned, and every item still has to pass the scope test before it is implemented.',
-    status: { achieved: 'Achieved', next: 'Next', planned: 'Planned', exploring: 'Under consideration' },
-    items: [
-      {
-        title: 'Topic Routing',
-        description:
-          'A publish reaches only the subscribers of its topic. The single broadcast bus is gone: clients subscribe to topics through a lock-free registry, with one bounded inbox per connection.',
-      },
-      {
-        title: 'Connect-Time Authentication',
-        description:
-          'Admission control at connection time, through headers, query string or a subprotocol — never as an in-band frame. The gateway verifies identity without interpreting payload.',
-      },
-      {
-        title: 'Publish Pacing',
-        description:
-          'Optional per-publish delay (delay_ms). Proposed, and only starts after connect-time authentication. Before it is kept, repeated benchmark runs must show the lookahead is cheap.',
-      },
-      {
-        title: 'Per-Connection Rate Limiting',
-        description:
-          'Ingest rate limits per connection to prevent abuse and smooth traffic spikes. Admission control, decided at the transport layer.',
-      },
-      {
-        title: 'Subscription Authorization',
-        description:
-          'Removed from the plan. The gateway is self-hosted and only the operator\'s own services reach it, so an admitted client is already trusted. It comes back only if an untrusted client, such as a browser, connects directly, which needs a credential issued per connection.',
-      },
-      {
-        title: 'Delivery Acknowledgements',
-        description:
-          'Optional per-message ack/nack. Payload-agnostic, but it forces per-message state and a retry path where today there is none, so it needs a decision before any proposal.',
-      },
-    ],
+      'Akagitsune is under active development. Topic routing, connect-time authentication and publish pacing have landed. What is left is listed in the order it is planned, and every item still has to pass the scope test before it is implemented.',
+    groups: {
+      done: { title: 'Done', note: '' },
+      mvp: { title: 'MVP', note: 'The first production use: one instance, behind a proxy that terminates TLS, reached only by the operator\'s own services, with an application that tolerates at-most-once delivery (no replay after a disconnect or a lag drop). These are what that use still needs, and each gets its own proposal.' },
+      after: { title: 'After the MVP', note: '' },
+      considering: { title: 'Under consideration', note: 'Not planned yet. Each one needs a decision before it can be planned.' },
+    },
+    status: { achieved: 'Achieved', mvp: 'MVP', later: 'After the MVP', exploring: 'Under consideration' },
+    items: {
+      done: [
+        {
+          title: 'Topic Routing',
+          description:
+            'A publish reaches only the subscribers of its topic. The single broadcast bus is gone: clients subscribe to topics through a lock-free registry, with one bounded inbox per connection.',
+        },
+        {
+          title: 'Connect-Time Authentication',
+          description:
+            'A connection is admitted only with a configured token, sent as a bearer header or a subprotocol, never as an in-band frame. A missing or wrong token gets a 401 before any WebSocket exists.',
+        },
+        {
+          title: 'Publish Pacing',
+          description:
+            'A text publish may carry delay_ms, up to 120 s. The connection\'s own reader waits before fanning out, with no queue, so the connection\'s later frames wait behind it.',
+        },
+      ],
+      mvp: [
+        {
+          title: 'Heartbeat and Idle Timeout',
+          description:
+            'The gateway sends protocol pings and closes a connection that does not answer in time. Today a peer that vanishes without a FIN or RST, and only subscribes, is never dropped and keeps its memory.',
+        },
+        {
+          title: 'Connection Cap',
+          description:
+            'A configured maximum of open connections; an upgrade above it is refused. Bounds memory against a client stuck in a reconnect loop.',
+        },
+        {
+          title: 'Graceful Shutdown on SIGTERM',
+          description:
+            'Today only Ctrl+C (SIGINT) is handled, while docker stop and Kubernetes send SIGTERM. Open WebSockets must be closed within a bound, not waited on forever.',
+        },
+        {
+          title: 'Health Check and Minimal Metrics',
+          description:
+            'A health route for the orchestrator or load balancer, plus at least the open-connection count and the dropped-message total.',
+        },
+        {
+          title: 'TLS-Terminating Proxy',
+          description:
+            'The gateway does not terminate TLS, so clients reach it through a proxy that serves wss://. Delivered as tested configuration and documentation, with no code change in the gateway.',
+        },
+        {
+          title: 'Open-File Limit',
+          description:
+            'Each connection is a file descriptor, and many Linux defaults allow 1024. Document the required ulimit -n, check it at startup, or both.',
+        },
+        {
+          title: 'Packaging',
+          description:
+            'A container image of the release binary, and an example deployment that runs it behind the TLS proxy.',
+        },
+      ],
+      after: [
+        {
+          title: 'Per-Connection Rate Limiting',
+          description:
+            'Admission control, in scope, but not needed while only the operator\'s own services publish. It returns when publishers the operator does not control connect, measured in messages per second first.',
+        },
+      ],
+      considering: [
+        {
+          title: 'Subscription Authorization',
+          description:
+            'Removed from the plan. The gateway is self-hosted and only the operator\'s own services reach it, so an admitted client is already trusted. It comes back only if an untrusted client, such as a browser, connects directly, which needs a credential issued per connection.',
+        },
+        {
+          title: 'Delivery Acknowledgements',
+          description:
+            'Optional per-message ack/nack. Payload-agnostic, but it forces per-message state and a retry path where today there is none, so it needs a decision before any proposal.',
+        },
+      ],
+    },
+    notScheduled: { title: 'Not scheduled', text: 'a backplane for running more than one instance. Listed so it is not forgotten, not because it is planned.' },
   },
   footer: {
     tagline: '赤狐 — Generic Realtime WebSocket Gateway',

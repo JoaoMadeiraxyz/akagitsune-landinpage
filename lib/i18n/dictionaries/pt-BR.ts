@@ -105,7 +105,7 @@ export const ptBR: Dictionary = {
     eyebrow: 'Protocolo',
     title: 'Simples por design',
     intro:
-      'Sem handshake e sem negociação de autenticação. Conecte, receba seu ID, assine um tópico, comece a publicar. Quatro tipos de frame cobrem tudo.',
+      'Sem handshake. Com a autenticação ligada, o token vai no pedido de upgrade, nunca num frame in-band. Conecte, receba seu ID, assine um tópico, comece a publicar. Quatro tipos de frame cobrem tudo.',
     tabs: {
       welcome: {
         label: 'Boas-vindas',
@@ -120,7 +120,7 @@ export const ptBR: Dictionary = {
       text: {
         label: 'Tópicos',
         description:
-          'Um tópico é uma chave opaca de 1 a 255 bytes escolhida pelo cliente. Publique nele e só os outros assinantes recebem a mensagem. O payload nunca é desserializado — é encaminhado byte a byte dentro do envelope.',
+          'Um tópico é uma chave opaca de 1 a 255 bytes escolhida pelo cliente. Publique nele e só os outros assinantes recebem a mensagem. O payload nunca é desserializado — é encaminhado byte a byte dentro do envelope. Uma publicação de texto pode levar delay_ms (até 120 s) para ser entregue depois.',
         code: `// O cliente envia:
 { "type": "subscribe", "topic": "lobby" }
 { "type": "publish", "topic": "lobby",
@@ -173,10 +173,10 @@ export const ptBR: Dictionary = {
       'Repasse de mensagens e enquadramento em envelope',
       'Backpressure e tratamento de estouro de fila',
       'Roteamento por tópico',
-      'Rate limiting por conexão (planejado)',
-      'Autenticação e controle de admissão (planejado)',
+      'Rate limiting por conexão (depois do MVP)',
+      'Autenticação na conexão e controle de admissão',
       'Semântica de entrega e confirmações',
-      'Backplane multi-instância (planejado)',
+      'Backplane multi-instância (sem previsão)',
     ],
     outOfScope: [
       'Nomes de usuário, perfis ou identidade',
@@ -226,40 +226,90 @@ export const ptBR: Dictionary = {
     eyebrow: 'Roadmap',
     title: 'O que vem a seguir',
     intro:
-      'O Akagitsune está em desenvolvimento ativo. O roteamento por tópico já chegou; o restante está na ordem em que é planejado, e cada item ainda precisa passar no teste de escopo antes de ser implementado.',
-    status: { achieved: 'Concluído', next: 'Próximo', planned: 'Planejado', exploring: 'Em avaliação' },
-    items: [
-      {
-        title: 'Roteamento por Tópico',
-        description:
-          'Uma publicação chega apenas aos assinantes do seu tópico. O barramento de broadcast único acabou: clientes assinam tópicos por meio de um registro sem locks, com uma caixa de entrada limitada por conexão.',
-      },
-      {
-        title: 'Autenticação no Momento da Conexão',
-        description:
-          'Controle de admissão na conexão, por headers, query string ou subprotocolo — nunca como um frame in-band. O gateway verifica a identidade sem interpretar o payload.',
-      },
-      {
-        title: 'Ritmo de Publicação',
-        description:
-          'Atraso opcional por publicação (delay_ms). Já proposto, só começa depois da autenticação no momento da conexão. Antes de ser mantido, benchmarks repetidos precisam mostrar que o lookahead é barato.',
-      },
-      {
-        title: 'Rate Limiting por Conexão',
-        description:
-          'Limites de taxa de ingestão por conexão para evitar abusos e suavizar picos de tráfego. Controle de admissão, decidido na camada de transporte.',
-      },
-      {
-        title: 'Autorização de Assinatura',
-        description:
-          'Saiu do plano. O gateway é self-hosted e só os serviços do próprio operador chegam até ele, então um cliente admitido já é confiável. Só volta se um cliente não confiável, como um navegador, se conectar direto, o que exige uma credencial emitida por conexão.',
-      },
-      {
-        title: 'Confirmações de Entrega',
-        description:
-          'Ack/nack opcional por mensagem. Agnóstico a payload, mas exige estado por mensagem e um caminho de retry onde hoje não há nenhum, então precisa de uma decisão antes de qualquer proposta.',
-      },
-    ],
+      'O Akagitsune está em desenvolvimento ativo. Roteamento por tópico, autenticação na conexão e ritmo de publicação já chegaram. O que falta está na ordem em que é planejado, e cada item ainda precisa passar no teste de escopo antes de ser implementado.',
+    groups: {
+      done: { title: 'Concluído', note: '' },
+      mvp: { title: 'MVP', note: 'O primeiro uso em produção: uma instância, atrás de um proxy que termina o TLS, acessada só pelos serviços do próprio operador, com uma aplicação que tolera entrega at-most-once (sem replay depois de uma desconexão ou de um descarte por atraso). É o que esse uso ainda precisa, e cada item ganha sua própria proposta.' },
+      after: { title: 'Depois do MVP', note: '' },
+      considering: { title: 'Em avaliação', note: 'Ainda não planejados. Cada um precisa de uma decisão antes de poder ser planejado.' },
+    },
+    status: { achieved: 'Concluído', mvp: 'MVP', later: 'Depois do MVP', exploring: 'Em avaliação' },
+    items: {
+      done: [
+        {
+          title: 'Roteamento por Tópico',
+          description:
+            'Uma publicação chega apenas aos assinantes do seu tópico. O barramento de broadcast único acabou: clientes assinam tópicos por meio de um registro sem locks, com uma caixa de entrada limitada por conexão.',
+        },
+        {
+          title: 'Autenticação no Momento da Conexão',
+          description:
+            'Uma conexão só é admitida com um token configurado, enviado como header bearer ou subprotocolo, nunca como frame in-band. Token ausente ou errado recebe 401 antes de existir qualquer WebSocket.',
+        },
+        {
+          title: 'Ritmo de Publicação',
+          description:
+            'Uma publicação de texto pode levar delay_ms, até 120 s. O próprio leitor da conexão espera antes do fanout, sem fila, então os frames seguintes da conexão esperam atrás dela.',
+        },
+      ],
+      mvp: [
+        {
+          title: 'Heartbeat e Timeout de Inatividade',
+          description:
+            'O gateway envia pings de protocolo e fecha a conexão que não responde a tempo. Hoje um peer que some sem FIN nem RST, e só assina, nunca é derrubado e continua ocupando memória.',
+        },
+        {
+          title: 'Limite de Conexões',
+          description:
+            'Um máximo configurado de conexões abertas; um upgrade acima dele é recusado. Limita a memória contra um cliente preso num loop de reconexão.',
+        },
+        {
+          title: 'Desligamento Gracioso no SIGTERM',
+          description:
+            'Hoje só o Ctrl+C (SIGINT) é tratado, enquanto docker stop e o Kubernetes mandam SIGTERM. WebSockets abertos precisam ser fechados dentro de um limite, não esperados para sempre.',
+        },
+        {
+          title: 'Health Check e Métricas Mínimas',
+          description:
+            'Uma rota de saúde para o orquestrador ou load balancer, e no mínimo a contagem de conexões abertas e o total de mensagens descartadas.',
+        },
+        {
+          title: 'Proxy com Terminação TLS',
+          description:
+            'O gateway não termina TLS, então os clientes chegam por um proxy que serve wss://. Entregue como configuração testada e documentação, sem mudança de código no gateway.',
+        },
+        {
+          title: 'Limite de Arquivos Abertos',
+          description:
+            'Cada conexão é um file descriptor, e muitos padrões do Linux permitem 1024. Documentar o ulimit -n necessário, verificá-lo na inicialização, ou os dois.',
+        },
+        {
+          title: 'Empacotamento',
+          description:
+            'Uma imagem de container do binário de release e um deploy de exemplo que o roda atrás do proxy TLS.',
+        },
+      ],
+      after: [
+        {
+          title: 'Rate Limiting por Conexão',
+          description:
+            'Controle de admissão, dentro do escopo, mas desnecessário enquanto só os serviços do próprio operador publicam. Volta quando publicadores fora do controle do operador se conectarem, medido primeiro em mensagens por segundo.',
+        },
+      ],
+      considering: [
+        {
+          title: 'Autorização de Assinatura',
+          description:
+            'Saiu do plano. O gateway é self-hosted e só os serviços do próprio operador chegam até ele, então um cliente admitido já é confiável. Só volta se um cliente não confiável, como um navegador, se conectar direto, o que exige uma credencial emitida por conexão.',
+        },
+        {
+          title: 'Confirmações de Entrega',
+          description:
+            'Ack/nack opcional por mensagem. Agnóstico a payload, mas exige estado por mensagem e um caminho de retry onde hoje não há nenhum, então precisa de uma decisão antes de qualquer proposta.',
+        },
+      ],
+    },
+    notScheduled: { title: 'Sem previsão', text: 'um backplane para rodar mais de uma instância. Listado para não ser esquecido, não porque está planejado.' },
   },
   footer: {
     tagline: '赤狐 — Gateway WebSocket Genérico em Tempo Real',
